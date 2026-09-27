@@ -1,3 +1,5 @@
+import java.util.Properties
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
@@ -8,7 +10,7 @@ android {
     namespace = "ca.wolfietech.dev.android.ytwear"
 
     // Compile against the newest stable platform; targetSdk is what Play enforces.
-    compileSdk = 36
+    compileSdk = 37
 
     // NDK r30 (LTS). r28+ links with 16 KB page alignment by default, which Play requires.
     ndkVersion = "30.0.16248370"
@@ -69,9 +71,13 @@ android {
 chaquopy {
     defaultConfig {
         // 3.11 is the newest Python Chaquopy builds for 32-bit ARM (3.12+ is 64-bit only).
-        // yt-dlp needs 3.10+. The build machine needs a matching python3.11 on PATH,
-        // or set buildPython("...") here.
+        // yt-dlp needs 3.10+. The build machine needs a matching python3.11 on PATH
+        // (py -3.11 on Windows), or buildPython=<path> in local.properties.
         version = "3.11"
+        val localProps = Properties().apply {
+            rootProject.file("local.properties").takeIf { it.exists() }?.reader()?.use(::load)
+        }
+        localProps.getProperty("buildPython")?.let { buildPython(it) }
         pip {
             install("yt-dlp")
         }

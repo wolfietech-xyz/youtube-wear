@@ -23,7 +23,7 @@ app/                                    Wear OS app module
 | Setting | Value | Why |
 |---|---|---|
 | `targetSdk` | 35 (Android 15) | Google Play minimum for Wear OS apps from Aug 31 2026 (phones need 36; Wear OS is 35). |
-| `compileSdk` | 36 (Android 16) | Newest stable platform; current AndroidX libraries expect it. Does not change runtime behaviour. |
+| `compileSdk` | 37 | Current AndroidX libraries (core-ktx 1.19) require it. Does not change runtime behaviour. |
 | `minSdk` | 30 (Wear OS 3, Android 11) | See below. |
 
 Google does not publish a Wear OS version distribution, so `minSdk` is a reasoned estimate:
@@ -55,9 +55,11 @@ That is not wired in yet; the likely route is QuickJS built through the NDK.
 
 ## Building
 
-Install Android SDK Platform 36, Build Tools 36.0.0, NDK 30.0.16248370 and CMake 3.22.1
+Install Android SDK Platform 37, Build Tools 36.0.0, NDK 30.0.16248370 and CMake 3.22.1
 (Android Studio will offer to). Chaquopy also needs Python 3.11 on the build machine
-(`python3.11` on PATH, or `buildPython` in `app/build.gradle.kts`). Then:
+(`py -3.11` on Windows, `python3.11` elsewhere, or a `buildPython=<path>` line in
+`local.properties`). The Gradle configuration cache is off because Chaquopy runs Python
+while configuring. Then:
 
 ```
 ./gradlew :app:assembleDebug
