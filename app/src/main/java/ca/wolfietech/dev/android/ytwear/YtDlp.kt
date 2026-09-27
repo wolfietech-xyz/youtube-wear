@@ -1,12 +1,14 @@
 package ca.wolfietech.dev.android.ytwear
 
 import android.content.Context
+import android.content.pm.PackageManager
 import com.chaquo.python.Kwarg
 import com.chaquo.python.PyObject
 import com.chaquo.python.Python
 import com.chaquo.python.android.AndroidPlatform
 import org.json.JSONObject
 import java.io.File
+import java.security.MessageDigest
 
 /** Kotlin side of app/src/main/python/ytwear.py. Calls block, so run them off the main thread. */
 object YtDlp {
@@ -99,8 +101,19 @@ object YtDlp {
             Kwarg("cookie_file", cookieFile(context).takeIf { it.exists() }?.path),
             Kwarg("qjs_path", qjs),
             Kwarg("verbose", BuildConfig.DEBUG),
+            Kwarg("android_package", context.packageName),
+            Kwarg("android_cert", signingCertSha1(context)),
         )
     }
+
+    private var certSha1: String? = null
+
+    /** SHA-1 of the app's signing certificate, as the Data API key restriction expects it. */
+    private fun signingCertSha1(context: Context): String? = certSha1 ?: runCatching {
+        val info = context.packageManager.getPackageInfo(context.packageName, PackageManager.GET_SIGNING_CERTIFICATES)
+        val cert = info.signingInfo!!.apkContentsSigners.first().toByteArray()
+        MessageDigest.getInstance("SHA-1").digest(cert).joinToString("") { "%02X".format(it) }
+    }.getOrNull().also { certSha1 = it }
 
     private fun JSONObject.toStream(): Stream {
         val headers = getJSONObject("headers")

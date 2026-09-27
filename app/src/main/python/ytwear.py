@@ -1,13 +1,17 @@
 """yt-dlp entry points called from Kotlin through Chaquopy.
 
 Every call takes the same settings, passed as keyword arguments from YtDlp.kt:
-api_key     YouTube Data API v3 key. Sent as the key parameter on yt-dlp's requests to
-            YouTube's internal API, and used for the search fallback of shorts_feed.
+api_key     YouTube Data API v3 key, for the Most Popular list and the Shorts search
+            fallback. Restricted to this Android app in Google Cloud, so requests carry
+            android_package and android_cert the way Google's Android libraries send them.
 cookie_file Netscape cookies.txt from a signed-in YouTube session, the only sign-in yt-dlp
             supports for YouTube. yt-dlp writes refreshed cookies back to it.
 qjs_path    QuickJS-ng executable yt-dlp uses to solve YouTube's JavaScript challenges.
 verbose     Log yt-dlp's debug output.
 """
+
+# The Data API key is checked against the app's package and signing certificate.
+_android_identity = {}
 
 import base64
 import json
@@ -15,6 +19,7 @@ import re
 import urllib.parse
 
 import yt_dlp
+from yt_dlp.networking import Request
 
 # What to play on a ~450 px round screen: direct https files only (no HLS/DASH manifests),
 # separate video and audio are fine since ExoPlayer merges them. Sorting by res uses the
@@ -31,7 +36,10 @@ def version():
     return yt_dlp.version.__version__
 
 
-def _ydl(api_key=None, cookie_file=None, qjs_path=None, verbose=False, **extra):
+def _ydl(api_key=None, cookie_file=None, qjs_path=None, verbose=False, android_package=None,
+         android_cert=None, **extra):
+    if android_package and android_cert:
+        _android_identity.update({"X-Android-Package": android_package, "X-Android-Cert": android_cert})
     opts = {
         "quiet": not verbose,
         "no_warnings": not verbose,
@@ -44,9 +52,13 @@ def _ydl(api_key=None, cookie_file=None, qjs_path=None, verbose=False, **extra):
         opts["js_runtimes"] = {"quickjs": {"path": qjs_path}}
     if cookie_file:
         opts["cookiefile"] = cookie_file
-    if api_key:
-        opts["extractor_args"] = {"youtube": {"innertube_key": [api_key]}}
     return yt_dlp.YoutubeDL(opts)
+
+
+def _data_api(ydl, endpoint, **params):
+    """GET a YouTube Data API v3 endpoint with the app's identity headers."""
+    url = f"https://www.googleapis.com/youtube/v3/{endpoint}?" + urllib.parse.urlencode(params)
+    return json.loads(ydl.urlopen(Request(url, headers=_android_identity)).read())
 
 
 def _stream(f):
@@ -130,12 +142,9 @@ def home_feed(**settings):
     api_key = settings.get("api_key")
     if not api_key:
         raise RuntimeError("Sign in (cookies.txt) to see your home feed")
-    query = urllib.parse.urlencode({
-        "part": "snippet,contentDetails,statistics", "chart": "mostPopular",
-        "maxResults": 30, "key": api_key,
-    })
     with _ydl(**settings) as ydl:
-        data = json.loads(ydl.urlopen("https://www.googleapis.com/youtube/v3/videos?" + query).read())
+        data = _data_api(ydl, "videos", part="snippet,contentDetails", chart="mostPopular",
+                         maxResults=30, key=api_key)
     videos = [{
         "id": item["id"],
         "title": item["snippet"]["title"],
@@ -216,8 +225,7 @@ class _account:
     """A YouTube extractor signed in with the cookies, for account actions."""
 
     def __init__(self, settings):
-        # No api_key: it only helps anonymous requests, and these are tied to the account.
-        self.ydl = _ydl(**{**settings, "api_key": None})
+        self.ydl = _ydl(**settings)
 
     def __enter__(self):
         ie = self.ydl.__enter__().get_info_extractor("Youtube")
@@ -317,12 +325,9 @@ def _search_shorts(page_token, settings):
     api_key = settings.get("api_key")
     if not api_key:
         return [], None
-    query = urllib.parse.urlencode({
-        "part": "id", "type": "video", "videoDuration": "short", "q": "#shorts",
-        "maxResults": 25, "key": api_key, **({"pageToken": page_token} if page_token else {}),
-    })
     with _ydl(**settings) as ydl:
-        data = json.loads(ydl.urlopen(
-            "https://www.googleapis.com/youtube/v3/search?" + query).read())
+        data = _data_api(ydl, "search", part="id", type="video", videoDuration="short",
+                         q="#shorts", maxResults=25, key=api_key,
+                         **({"pageToken": page_token} if page_token else {}))
     ids = [item["id"]["videoId"] for item in data.get("items", [])]
     return ids, data.get("nextPageToken")

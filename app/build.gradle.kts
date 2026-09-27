@@ -6,7 +6,7 @@ plugins {
     alias(libs.plugins.chaquopy)
 }
 
-// Machine-local settings (not in git): sdk.dir, buildPython, youtubeApiKey.
+// Machine-local settings (not in git): sdk.dir, buildPython, youtubeApiKey, release signing.
 val localProps = Properties().apply {
     rootProject.file("local.properties").takeIf { it.exists() }?.reader()?.use(::load)
 }
@@ -55,8 +55,21 @@ android {
         }
     }
 
+    signingConfigs {
+        // Release key lives outside the repo; local.properties names it (see README).
+        localProps.getProperty("releaseStoreFile")?.let { path ->
+            create("release") {
+                storeFile = file(path)
+                storePassword = localProps.getProperty("releaseStorePassword")
+                keyAlias = localProps.getProperty("releaseKeyAlias")
+                keyPassword = localProps.getProperty("releaseKeyPassword")
+            }
+        }
+    }
+
     buildTypes {
         release {
+            signingConfig = signingConfigs.findByName("release")
             isMinifyEnabled = true
             isShrinkResources = true
             proguardFiles(

@@ -9,3 +9,7 @@ build/
 .cxx/
 *.apk
 *.aab
+
+# Local session notes, not published
+/HANDOFF.md
+__pycache__/
