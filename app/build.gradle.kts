@@ -1,6 +1,7 @@
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
+    alias(libs.plugins.chaquopy)
 }
 
 android {
@@ -29,8 +30,12 @@ android {
                 arguments += "-DANDROID_STL=c++_shared"
             }
         }
-        // No abiFilters: build armeabi-v7a (most watches ship a 32-bit userspace),
-        // arm64-v8a, and x86/x86_64 for the emulator.
+        ndk {
+            // Chaquopy ships a prebuilt Python per ABI, so the list must be explicit.
+            // armeabi-v7a matters: many watches run a 32-bit userspace even on 64-bit chips.
+            // x86_64 is for the emulator.
+            abiFilters += listOf("armeabi-v7a", "arm64-v8a", "x86_64")
+        }
     }
 
     externalNativeBuild {
@@ -58,6 +63,18 @@ android {
 
     buildFeatures {
         compose = true
+    }
+}
+
+chaquopy {
+    defaultConfig {
+        // 3.11 is the newest Python Chaquopy builds for 32-bit ARM (3.12+ is 64-bit only).
+        // yt-dlp needs 3.10+. The build machine needs a matching python3.11 on PATH,
+        // or set buildPython("...") here.
+        version = "3.11"
+        pip {
+            install("yt-dlp")
+        }
     }
 }
 

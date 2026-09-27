@@ -9,6 +9,8 @@ wearToolingPreview = "1.0.0"
 activityCompose = "1.13.0"
 coreKtx = "1.19.1"
 lifecycle = "2.11.0"
+# Chaquopy 17.0 supports AGP 7.3 to 9.4 and Python 3.10 to 3.14.
+chaquopy = "17.0.0"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -25,3 +27,4 @@ androidx-wear-tooling-preview = { group = "androidx.wear", name = "wear-tooling-
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
 kotlin-compose = { id = "org.jetbrains.kotlin.plugin.compose", version.ref = "kotlin" }
+chaquopy = { id = "com.chaquo.python", version.ref = "chaquopy" }

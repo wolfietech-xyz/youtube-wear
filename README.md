@@ -2,7 +2,8 @@
 
 YouTube on Wear OS watches, backed by yt-dlp / youtube-dl. This is the initial workspace:
 Kotlin DSL Gradle with a version catalog, one Wear OS app module (Compose for Wear OS,
-Material 3) and a CMake/NDK native library wired in through JNI.
+Material 3), a CMake/NDK native library wired in through JNI, and yt-dlp running on an
+embedded CPython via [Chaquopy](https://chaquo.com/chaquopy/).
 
 ## Layout
 
@@ -12,6 +13,8 @@ gradle/libs.versions.toml               version catalog
 app/                                    Wear OS app module
   src/main/java/.../MainActivity.kt     Compose for Wear OS entry point
   src/main/java/.../NativeLib.kt        JNI bridge
+  src/main/java/.../YtDlp.kt            Kotlin bridge to the Python module
+  src/main/python/ytwear.py             yt-dlp calls (extract formats, version)
   src/main/cpp/                         CMakeLists.txt + native-lib.cpp
 ```
 
@@ -37,12 +40,24 @@ Mobvoi and Montblanc models), so 30 is the sweet spot.
 - Android Gradle Plugin 9.4.0 (built-in Kotlin, so no `kotlin-android` plugin) with Gradle 9.6.0
 - Kotlin 2.4.20 (Compose compiler plugin), JDK 17+
 - NDK r30 LTS (`30.0.16248370`), CMake 3.22.1. r28+ produces 16 KB page aligned libraries.
-- No `abiFilters`: armeabi-v7a matters because many watches run a 32-bit userspace.
+- Chaquopy 17.0.0 with Python 3.11 and `yt-dlp` installed by pip at build time.
+- ABIs: armeabi-v7a, arm64-v8a, x86_64 (emulator).
+
+### Why Python 3.11
+
+Chaquopy only builds Python 3.12+ for 64-bit ABIs. Many watches run a 32-bit
+(armeabi-v7a) userspace, so going to 3.12+ would cut device coverage. 3.11 is supported
+by yt-dlp (needs 3.10+) until upstream drops it; revisit when it does. Chaquopy notes
+that 16 KB page devices work best on 3.13+, which is not a concern on current watches.
+
+yt-dlp increasingly needs a JavaScript runtime to solve YouTube's player challenges.
+That is not wired in yet; the likely route is QuickJS built through the NDK.
 
 ## Building
 
 Install Android SDK Platform 36, Build Tools 36.0.0, NDK 30.0.16248370 and CMake 3.22.1
-(Android Studio will offer to), then:
+(Android Studio will offer to). Chaquopy also needs Python 3.11 on the build machine
+(`python3.11` on PATH, or `buildPython` in `app/build.gradle.kts`). Then:
 
 ```
 ./gradlew :app:assembleDebug
