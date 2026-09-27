@@ -3,6 +3,7 @@ package ca.wolfietech.dev.android.ytwear
 import android.content.ActivityNotFoundException
 import android.net.Uri
 import android.os.Bundle
+import android.view.TextureView
 import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
@@ -13,11 +14,16 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -29,9 +35,9 @@ import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.lifecycleScope
 import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
+import androidx.media3.common.VideoSize
 import androidx.media3.exoplayer.ExoPlayer
-import androidx.media3.ui.AspectRatioFrameLayout
-import androidx.media3.ui.PlayerView
+import androidx.media3.exoplayer.util.EventLogger
 import androidx.wear.compose.material3.AppScaffold
 import androidx.wear.compose.material3.Button
 import androidx.wear.compose.material3.MaterialTheme
@@ -63,7 +69,26 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         player = buildPlayer(this).apply {
+            if (BuildConfig.DEBUG) addAnalyticsListener(EventLogger())
             addListener(object : Player.Listener {
+                override fun onPlaybackStateChanged(playbackState: Int) {
+                    val name = when (playbackState) {
+                        Player.STATE_BUFFERING -> "buffering"
+                        Player.STATE_READY -> "ready"
+                        Player.STATE_ENDED -> "ended"
+                        else -> "idle"
+                    }
+                    Log.i(TAG, "Player $name at ${currentPosition}ms")
+                }
+
+                override fun onRenderedFirstFrame() {
+                    Log.i(TAG, "First video frame rendered")
+                }
+
+                override fun onVideoSizeChanged(videoSize: VideoSize) {
+                    Log.i(TAG, "Video size ${videoSize.width}x${videoSize.height}")
+                }
+
                 override fun onPlayerError(error: PlaybackException) {
                     Log.e(TAG, "Playback failed", error)
                     state = UiState.Failed("Playback: ${error.errorCodeName}")
@@ -191,24 +216,37 @@ fun HomeScreen(state: UiState, onPlay: () -> Unit, onImportCookies: () -> Unit) 
 @Composable
 fun VideoScreen(player: Player, onStop: () -> Unit) {
     BackHandler(onBack = onStop)
+    var aspectRatio by remember { mutableFloatStateOf(16f / 9f) }
+    DisposableEffect(player) {
+        val listener = object : Player.Listener {
+            override fun onVideoSizeChanged(videoSize: VideoSize) {
+                if (videoSize.width > 0 && videoSize.height > 0) {
+                    aspectRatio = videoSize.width * videoSize.pixelWidthHeightRatio / videoSize.height
+                }
+            }
+        }
+        player.addListener(listener)
+        onDispose { player.removeListener(listener) }
+    }
     Box(
         modifier = Modifier
             .fillMaxSize()
             .background(Color.Black)
             .clickable { if (player.isPlaying) player.pause() else player.play() },
+        contentAlignment = Alignment.Center,
     ) {
+        // A TextureView draws inside the app's window. A SurfaceView (PlayerView's default)
+        // sits behind it and shows through a hole, which this black Box sometimes covered:
+        // audio played over a black screen.
         AndroidView(
-            modifier = Modifier.fillMaxSize(),
+            modifier = Modifier.fillMaxWidth().aspectRatio(aspectRatio),
             factory = { context ->
-                PlayerView(context).apply {
-                    // Media3's built-in controls are sized for phones.
-                    useController = false
-                    resizeMode = AspectRatioFrameLayout.RESIZE_MODE_FIT
+                TextureView(context).apply {
                     keepScreenOn = true
-                    this.player = player
+                    player.setVideoTextureView(this)
                 }
             },
-            onRelease = { it.player = null },
+            onRelease = { player.clearVideoTextureView(it) },
         )
     }
 }
