@@ -6,6 +6,11 @@ plugins {
     alias(libs.plugins.chaquopy)
 }
 
+// Machine-local settings (not in git): sdk.dir, buildPython, youtubeApiKey.
+val localProps = Properties().apply {
+    rootProject.file("local.properties").takeIf { it.exists() }?.reader()?.use(::load)
+}
+
 android {
     namespace = "ca.wolfietech.dev.android.ytwear"
 
@@ -25,6 +30,9 @@ android {
         targetSdk = 35
         versionCode = 1
         versionName = "0.1.0"
+
+        // YouTube Data API v3 key from the youtube-wearables GCP project.
+        buildConfigField("String", "YOUTUBE_API_KEY", "\"${localProps.getProperty("youtubeApiKey", "")}\"")
 
         externalNativeBuild {
             cmake {
@@ -65,6 +73,7 @@ android {
 
     buildFeatures {
         compose = true
+        buildConfig = true
     }
 }
 
@@ -74,9 +83,6 @@ chaquopy {
         // yt-dlp needs 3.10+. The build machine needs a matching python3.11 on PATH
         // (py -3.11 on Windows), or buildPython=<path> in local.properties.
         version = "3.11"
-        val localProps = Properties().apply {
-            rootProject.file("local.properties").takeIf { it.exists() }?.reader()?.use(::load)
-        }
         localProps.getProperty("buildPython")?.let { buildPython(it) }
         pip {
             install("yt-dlp")

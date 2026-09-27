@@ -4,6 +4,7 @@ import android.content.Context
 import com.chaquo.python.Python
 import com.chaquo.python.android.AndroidPlatform
 import org.json.JSONObject
+import java.io.File
 
 /** Kotlin side of app/src/main/python/ytwear.py. Calls block, so run them off the main thread. */
 object YtDlp {
@@ -19,13 +20,20 @@ object YtDlp {
 
     /** Asks yt-dlp for a watch-sized stream of [url]. Throws if yt-dlp can't resolve it. */
     fun resolve(context: Context, url: String): ResolvedVideo {
-        val json = JSONObject(module(context).callAttr("resolve", url).toString())
+        val apiKey = BuildConfig.YOUTUBE_API_KEY.ifEmpty { null }
+        val cookies = cookieFile(context).takeIf { it.exists() }?.path
+        val json = JSONObject(
+            module(context).callAttr("resolve", url, apiKey, BuildConfig.DEBUG, cookies).toString()
+        )
         return ResolvedVideo(
             title = json.optString("title"),
             video = json.getJSONObject("video").toStream(),
             audio = json.optJSONObject("audio")?.toStream(),
         )
     }
+
+    /** Signed-in YouTube cookies (Netscape cookies.txt), if present. Private to the app. */
+    fun cookieFile(context: Context) = File(context.filesDir, "cookies.txt")
 
     private fun JSONObject.toStream(): Stream {
         val headers = getJSONObject("headers")

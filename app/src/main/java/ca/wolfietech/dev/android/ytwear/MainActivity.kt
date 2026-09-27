@@ -1,10 +1,13 @@
 package ca.wolfietech.dev.android.ytwear
 
+import android.content.ActivityNotFoundException
+import android.net.Uri
 import android.os.Bundle
 import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -54,6 +57,9 @@ class MainActivity : ComponentActivity() {
     private var state by mutableStateOf<UiState>(UiState.Idle("starting…"))
     private lateinit var player: ExoPlayer
 
+    private val pickCookies =
+        registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri -> uri?.let(::importCookies) }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         player = buildPlayer(this).apply {
@@ -64,7 +70,9 @@ class MainActivity : ComponentActivity() {
                 }
             })
         }
-        setContent { WearApp(state, player, onPlay = ::playTestVideo, onStop = ::stopVideo) }
+        setContent {
+            WearApp(state, player, onPlay = ::playTestVideo, onImportCookies = ::chooseCookies, onStop = ::stopVideo)
+        }
 
         // Starting Python takes a moment on a watch, so keep it off the main thread.
         lifecycleScope.launch {
@@ -88,6 +96,34 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    private fun chooseCookies() {
+        try {
+            pickCookies.launch(arrayOf("text/plain", "*/*"))
+        } catch (e: ActivityNotFoundException) {
+            state = UiState.Failed("This watch has no file picker")
+        }
+    }
+
+    /** Copies a cookies.txt exported from a signed-in browser into the app's private storage. */
+    private fun importCookies(uri: Uri) {
+        lifecycleScope.launch {
+            state = try {
+                val count = withContext(Dispatchers.IO) {
+                    val text = contentResolver.openInputStream(uri)!!.use { it.readBytes().decodeToString() }
+                    // Netscape format: 7 tab-separated fields per cookie line.
+                    val cookies = text.lineSequence().count { it.split('	').size == 7 }
+                    require(cookies > 0) { "Not a cookies.txt file" }
+                    YtDlp.cookieFile(this@MainActivity).writeText(text)
+                    cookies
+                }
+                UiState.Idle("Imported $count cookies")
+            } catch (e: Exception) {
+                Log.e(TAG, "Cookie import failed", e)
+                UiState.Failed("Cookie import: ${e.message}")
+            }
+        }
+    }
+
     private fun stopVideo() {
         player.stop()
         state = UiState.Idle("Stopped")
@@ -105,20 +141,26 @@ class MainActivity : ComponentActivity() {
 }
 
 @Composable
-fun WearApp(state: UiState, player: Player?, onPlay: () -> Unit, onStop: () -> Unit) {
+fun WearApp(
+    state: UiState,
+    player: Player?,
+    onPlay: () -> Unit,
+    onImportCookies: () -> Unit,
+    onStop: () -> Unit,
+) {
     MaterialTheme {
         AppScaffold {
             if (state is UiState.Playing && player != null) {
                 VideoScreen(player, onStop)
             } else {
-                HomeScreen(state, onPlay)
+                HomeScreen(state, onPlay, onImportCookies)
             }
         }
     }
 }
 
 @Composable
-fun HomeScreen(state: UiState, onPlay: () -> Unit) {
+fun HomeScreen(state: UiState, onPlay: () -> Unit, onImportCookies: () -> Unit) {
     Column(
         modifier = Modifier.fillMaxSize().padding(24.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterVertically),
@@ -138,6 +180,9 @@ fun HomeScreen(state: UiState, onPlay: () -> Unit) {
         )
         Button(onClick = onPlay, enabled = state !is UiState.Loading) {
             Text("Play test video")
+        }
+        Button(onClick = onImportCookies, enabled = state !is UiState.Loading) {
+            Text("Import cookies")
         }
     }
 }
@@ -171,5 +216,5 @@ fun VideoScreen(player: Player, onStop: () -> Unit) {
 @Preview(device = WearDevices.SMALL_ROUND, showSystemUi = true)
 @Composable
 fun WearAppPreview() {
-    WearApp(UiState.Idle("yt-dlp 2026.09.01"), player = null, onPlay = {}, onStop = {})
+    WearApp(UiState.Idle("yt-dlp 2026.09.01"), player = null, onPlay = {}, onImportCookies = {}, onStop = {})
 }

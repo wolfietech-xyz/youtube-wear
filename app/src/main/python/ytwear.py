@@ -31,20 +31,28 @@ def _stream(f):
     }
 
 
-def resolve(url):
+def resolve(url, api_key=None, verbose=False, cookie_file=None):
     """Pick a watch-friendly stream for a video URL, without downloading.
 
     Returns JSON: id, title, duration, video (a stream) and audio (a stream, or null when
     the video stream already carries sound). Each stream has a direct url and the HTTP
-    headers yt-dlp says to send with it.
+    headers yt-dlp says to send with it. api_key, when given, is sent as the key parameter
+    on yt-dlp's requests to YouTube's internal API. verbose logs yt-dlp's debug output.
+    cookie_file is a Netscape cookies.txt from a signed-in YouTube session, the only sign-in
+    yt-dlp supports for YouTube; yt-dlp writes refreshed cookies back to it.
     """
     opts = {
-        "quiet": True,
-        "no_warnings": True,
+        "quiet": not verbose,
+        "no_warnings": not verbose,
+        "verbose": verbose,
         "skip_download": True,
         "noplaylist": True,
         "format": WATCH_FORMAT,
     }
+    if cookie_file:
+        opts["cookiefile"] = cookie_file
+    if api_key:
+        opts["extractor_args"] = {"youtube": {"innertube_key": [api_key]}}
     with yt_dlp.YoutubeDL(opts) as ydl:
         info = ydl.extract_info(url, download=False)
 
