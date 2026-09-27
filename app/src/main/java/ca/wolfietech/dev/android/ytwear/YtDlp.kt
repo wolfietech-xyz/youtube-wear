@@ -22,8 +22,10 @@ object YtDlp {
     fun resolve(context: Context, url: String): ResolvedVideo {
         val apiKey = BuildConfig.YOUTUBE_API_KEY.ifEmpty { null }
         val cookies = cookieFile(context).takeIf { it.exists() }?.path
+        // Built from app/src/main/cpp/quickjs-ng and extracted here at install time.
+        val qjs = File(context.applicationInfo.nativeLibraryDir, "libqjs.so").path
         val json = JSONObject(
-            module(context).callAttr("resolve", url, apiKey, BuildConfig.DEBUG, cookies).toString()
+            module(context).callAttr("resolve", url, apiKey, BuildConfig.DEBUG, cookies, qjs).toString()
         )
         return ResolvedVideo(
             title = json.optString("title"),

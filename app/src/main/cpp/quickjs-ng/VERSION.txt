@@ -1,0 +1,2 @@
+QuickJS-ng v0.17.0 (https://github.com/quickjs-ng/quickjs/releases/tag/v0.17.0), MIT licence.
+Only the sources for the qjs command-line runtime are kept; built by ../CMakeLists.txt.

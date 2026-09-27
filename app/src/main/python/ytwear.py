@@ -31,7 +31,7 @@ def _stream(f):
     }
 
 
-def resolve(url, api_key=None, verbose=False, cookie_file=None):
+def resolve(url, api_key=None, verbose=False, cookie_file=None, qjs_path=None):
     """Pick a watch-friendly stream for a video URL, without downloading.
 
     Returns JSON: id, title, duration, video (a stream) and audio (a stream, or null when
@@ -40,6 +40,7 @@ def resolve(url, api_key=None, verbose=False, cookie_file=None):
     on yt-dlp's requests to YouTube's internal API. verbose logs yt-dlp's debug output.
     cookie_file is a Netscape cookies.txt from a signed-in YouTube session, the only sign-in
     yt-dlp supports for YouTube; yt-dlp writes refreshed cookies back to it.
+    qjs_path is the QuickJS-ng executable yt-dlp uses to solve YouTube's JS challenges.
     """
     opts = {
         "quiet": not verbose,
@@ -49,6 +50,8 @@ def resolve(url, api_key=None, verbose=False, cookie_file=None):
         "noplaylist": True,
         "format": WATCH_FORMAT,
     }
+    if qjs_path:
+        opts["js_runtimes"] = {"quickjs": {"path": qjs_path}}
     if cookie_file:
         opts["cookiefile"] = cookie_file
     if api_key:

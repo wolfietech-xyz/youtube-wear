@@ -71,6 +71,14 @@ android {
         targetCompatibility = JavaVersion.VERSION_17
     }
 
+    packaging {
+        jniLibs {
+            // Extract native libraries at install time so libqjs.so (the QuickJS CLI) exists
+            // as a real file in nativeLibraryDir, the one place an app may exec binaries from.
+            useLegacyPackaging = true
+        }
+    }
+
     buildFeatures {
         compose = true
         buildConfig = true
@@ -86,6 +94,8 @@ chaquopy {
         localProps.getProperty("buildPython")?.let { buildPython(it) }
         pip {
             install("yt-dlp")
+            // yt-dlp's YouTube JavaScript challenge solver scripts, run by QuickJS.
+            install("yt-dlp-ejs")
         }
     }
 }
