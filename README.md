@@ -24,7 +24,7 @@ which YouTube's terms don't allow and which can break whenever YouTube changes t
   watch's keyboard, and Voice search with its speech recognition.
 - **Controls:** tap to pause; paused, previous / play / next and volume. The bezel or crown
   also sets the volume. In a regular video, swipe up for its details.
-- **Likes:** double-tap a reel to like or unlike it (signed in).
+- **Likes:** double-tap a reel to like or unlike it.
 - **Bad networks:** Settings has timeouts for likes (8 s) and videos (50 s). Hold a loading
   video until two green dots show, then release, to keep waiting with no timeout.
 - A small hidden extra for long loads.
@@ -41,25 +41,7 @@ adb install youtube-wear-<version>.apk
 
 ## Signing in
 
-YouTube increasingly shows a "confirm you're not a bot" wall to signed-out requests, and
-likes, your home feed and personalised Shorts need an account. yt-dlp only supports signing
-in with cookies, and Wear OS has no file picker, so for now the cookies go on with adb:
-
-1. In a private browser window, sign in to youtube.com, export its cookies as `cookies.txt`
-   (Netscape format, tab-separated, for example with the "Get cookies.txt LOCALLY" add-on),
-   then close the window so the browser doesn't rotate them.
-2. Copy the file into the app's private storage:
-
-   ```
-   adb push cookies.txt /data/local/tmp/cookies.txt
-   adb shell run-as ca.wolfietech.dev.android.ytwear cp /data/local/tmp/cookies.txt files/cookies.txt
-   adb shell rm /data/local/tmp/cookies.txt
-   ```
-
-   `run-as` only works on debug builds; for a release build, build and install a debug APK
-   (below) instead.
-
-Cookies give full access to the Google account, so a spare account is safer.
+Signing in with cookies is not recommended for use.
 
 ## Layout
 
