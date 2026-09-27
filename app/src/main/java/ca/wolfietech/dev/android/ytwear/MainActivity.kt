@@ -97,11 +97,12 @@ class MainActivity : ComponentActivity() {
 
     private fun startWatching(mode: WatchMode) {
         session?.close()
+        val like: suspend (String) -> Unit = { id -> withContext(Dispatchers.IO) { YtDlp.like(applicationContext, id) } }
         session = when (mode) {
-            WatchMode.Reels -> WatchSession(mode, player, loader, lifecycleScope) { token ->
+            WatchMode.Reels -> WatchSession(mode, player, loader, like, lifecycleScope) { token ->
                 withContext(Dispatchers.IO) { YtDlp.shortsFeed(applicationContext, token) }
             }.apply { start() }
-            WatchMode.Videos -> WatchSession(mode, player, loader, lifecycleScope).apply { start(TEST_VIDEOS) }
+            WatchMode.Videos -> WatchSession(mode, player, loader, like, lifecycleScope).apply { start(TEST_VIDEOS) }
         }
     }
 

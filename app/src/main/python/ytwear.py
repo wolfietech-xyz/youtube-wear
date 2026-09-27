@@ -120,6 +120,21 @@ def shorts_feed(token=None, **settings):
     raise RuntimeError("No Shorts available (" + "; ".join(errors) + ")")
 
 
+def like(video_id, **settings):
+    """Likes a video as the signed-in account. Needs cookie_file; raises if YouTube refuses."""
+    if not settings.get("cookie_file"):
+        raise RuntimeError("Sign in (cookies.txt) to like videos")
+    # No api_key: it only helps anonymous requests, and liking is tied to the account.
+    settings = {**settings, "api_key": None}
+    with _ydl(**settings) as ydl:
+        ie = ydl.get_info_extractor("Youtube")
+        ie._real_initialize()
+        if not ie.is_authenticated:
+            raise RuntimeError("YouTube cookies have expired; export new ones")
+        ie._call_api("like/like", {"target": {"videoId": video_id}}, video_id, note=False)
+    return True
+
+
 def _sequence_params(video_id):
     # Protobuf YouTube's web client sends to start a Shorts sequence from one video.
     raw = b"\x0a\x0b" + video_id.encode() + b"\x2a\x02\x18\x05\x50\x19\x68\x00"

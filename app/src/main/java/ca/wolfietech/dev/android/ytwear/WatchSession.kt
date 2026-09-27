@@ -25,6 +25,8 @@ class WatchSession(
     val mode: WatchMode,
     private val player: ExoPlayer,
     private val loader: VideoLoader,
+    /** Likes a video on YouTube; runs off the main thread and throws on failure. */
+    private val likeVideo: suspend (id: String) -> Unit,
     private val scope: CoroutineScope,
     /** Fetches the next page of IDs, or null for a fixed list. */
     private val nextPage: (suspend (token: String?) -> FeedPage)? = null,
@@ -42,6 +44,14 @@ class WatchSession(
         private set
     var aspectRatio by mutableFloatStateOf(if (mode == WatchMode.Reels) 9f / 16f else 16f / 9f)
         private set
+
+    /** Videos liked in this session. */
+    val liked = mutableStateListOf<String>()
+    /** Bumped on every like gesture, so the screen can animate a heart. */
+    var likeBursts by mutableIntStateOf(0)
+        private set
+    /** Shown briefly when a like fails. */
+    var notice by mutableStateOf<String?>(null)
 
     private var pageToken: String? = null
     private var morePages = nextPage != null
@@ -117,6 +127,26 @@ class WatchSession(
     /** Restarts the current video if it's a few seconds in, like most players; else goes back. */
     fun previous() {
         if (player.currentPosition > 3_000 || index == 0) player.seekTo(0) else select(index - 1)
+    }
+
+    /** Double-tap: likes the current video, like the YouTube app (it never un-likes). */
+    fun like() {
+        val id = current?.id ?: return
+        likeBursts++
+        if (id in liked) return
+        liked += id
+        scope.launch {
+            try {
+                likeVideo(id)
+                Log.i(TAG, "Liked $id")
+            } catch (e: Exception) {
+                if (e is kotlinx.coroutines.CancellationException) throw e
+                Log.e(TAG, "Couldn't like $id", e)
+                liked -= id
+                notice = e.message?.lineSequence()?.lastOrNull { it.isNotBlank() }
+                    ?.replace(Regex("^\\w+(Error|Exception): "), "")?.take(80) ?: "Couldn't like"
+            }
+        }
     }
 
     fun togglePause() {

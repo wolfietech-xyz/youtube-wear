@@ -47,6 +47,11 @@ object YtDlp {
         )
     }
 
+    /** Likes [videoId] as the signed-in account. Throws if there are no valid cookies. */
+    fun like(context: Context, videoId: String) {
+        call(context, "like", videoId)
+    }
+
     /** Signed-in YouTube cookies (Netscape cookies.txt), if present. Private to the app. */
     fun cookieFile(context: Context) = File(context.filesDir, "cookies.txt")
 

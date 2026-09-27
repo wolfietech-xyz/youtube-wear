@@ -5,12 +5,16 @@ import android.media.AudioManager
 import android.view.TextureView
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.focusable
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.gestures.scrollBy
 import androidx.compose.foundation.layout.Arrangement
@@ -45,6 +49,7 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.input.rotary.onRotaryScrollEvent
 import androidx.compose.ui.platform.LocalContext
@@ -58,6 +63,7 @@ import androidx.wear.compose.material3.FilledIconButton
 import androidx.wear.compose.material3.FilledTonalIconButton
 import androidx.wear.compose.material3.MaterialTheme
 import androidx.wear.compose.material3.Text
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import android.icu.text.CompactDecimalFormat
 import java.util.Locale
@@ -82,10 +88,20 @@ fun ReelsScreen(session: WatchSession, player: ExoPlayer, onExit: () -> Unit) {
             return@WatchFrame
         }
         VerticalPager(state = pager, modifier = Modifier.fillMaxSize()) { page ->
-            Box(Modifier.fillMaxSize().clickable { session.togglePause() }, Alignment.Center) {
+            Box(
+                Modifier
+                    .fillMaxSize()
+                    .pointerInput(Unit) {
+                        // Tap pauses; double-tap likes, like the YouTube app.
+                        detectTapGestures(onTap = { session.togglePause() }, onDoubleTap = { session.like() })
+                    },
+                Alignment.Center,
+            ) {
                 if (page == session.index) {
                     VideoSurface(player, session.aspectRatio, Modifier.fillMaxHeight())
                     if (session.loading || session.error != null) Status(session.error ?: "Loading…")
+                    LikeBurst(session.likeBursts)
+                    Notice(session)
                     if (session.paused && session.current != null) {
                         PausedControls(
                             session,
@@ -227,7 +243,11 @@ private fun PausedControls(
                 overflow = TextOverflow.Ellipsis,
             )
             Text(
-                listOfNotNull(video.channel, video.viewCount?.let { "${compact(it)} views" }).joinToString(" · "),
+                listOfNotNull(
+                    "♥".takeIf { video.id in session.liked },
+                    video.channel,
+                    video.viewCount?.let { "${compact(it)} views" },
+                ).joinToString(" · "),
                 style = MaterialTheme.typography.bodyExtraSmall,
                 textAlign = TextAlign.Center,
                 maxLines = 1,
@@ -244,6 +264,53 @@ private fun PausedControls(
             Text("Vol ${volume.level}", style = MaterialTheme.typography.labelMedium)
             FilledTonalIconButton(onClick = { volume.step(1) }) { Glyph(Glyphs.Plus) }
         }
+    }
+}
+
+/** A heart that pops up and fades each time [bursts] goes up. */
+@Composable
+private fun LikeBurst(bursts: Int) {
+    val alpha = remember { Animatable(0f) }
+    val scale = remember { Animatable(0.6f) }
+    LaunchedEffect(bursts) {
+        if (bursts == 0) return@LaunchedEffect
+        alpha.snapTo(1f)
+        scale.snapTo(0.6f)
+        scale.animateTo(1f, spring(dampingRatio = 0.45f))
+        delay(350)
+        alpha.animateTo(0f, tween(300))
+    }
+    if (alpha.value > 0f) {
+        Canvas(Modifier.size(110.dp).graphicsLayer { this.alpha = alpha.value; scaleX = scale.value; scaleY = scale.value }) {
+            val w = size.width
+            val h = size.height
+            val heart = Path().apply {
+                moveTo(w / 2, h * 0.9f)
+                cubicTo(w * -0.1f, h * 0.5f, w * 0.15f, h * -0.05f, w / 2, h * 0.28f)
+                cubicTo(w * 0.85f, h * -0.05f, w * 1.1f, h * 0.5f, w / 2, h * 0.9f)
+                close()
+            }
+            drawPath(heart, Color(0xFFFF3040))
+        }
+    }
+}
+
+/** A like failure, shown for a few seconds. */
+@Composable
+private fun Notice(session: WatchSession) {
+    val text = session.notice ?: return
+    LaunchedEffect(text) {
+        delay(3_000)
+        session.notice = null
+    }
+    Box(Modifier.fillMaxSize().padding(bottom = 40.dp), Alignment.BottomCenter) {
+        Text(
+            text,
+            modifier = Modifier.background(Color(0xCC000000)).padding(horizontal = 10.dp, vertical = 4.dp),
+            style = MaterialTheme.typography.bodyExtraSmall,
+            textAlign = TextAlign.Center,
+            maxLines = 2,
+        )
     }
 }
 
