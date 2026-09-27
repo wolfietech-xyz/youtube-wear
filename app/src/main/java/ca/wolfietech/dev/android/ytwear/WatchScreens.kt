@@ -2,10 +2,12 @@ package ca.wolfietech.dev.android.ytwear
 
 import android.content.Context
 import android.media.AudioManager
+import android.os.SystemClock
 import android.view.TextureView
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.slideInVertically
@@ -14,6 +16,8 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.focusable
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.gestures.scrollBy
@@ -21,6 +25,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxHeight
@@ -29,6 +34,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.pager.VerticalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.rememberScrollState
@@ -47,7 +53,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
@@ -57,12 +65,14 @@ import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.wear.compose.material3.FilledIconButton
 import androidx.wear.compose.material3.FilledTonalIconButton
 import androidx.wear.compose.material3.MaterialTheme
 import androidx.wear.compose.material3.Text
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import android.icu.text.CompactDecimalFormat
@@ -82,25 +92,40 @@ fun ReelsScreen(session: WatchSession, player: ExoPlayer, onExit: () -> Unit) {
         if (session.index >= 0 && pager.currentPage != session.index) pager.animateScrollToPage(session.index)
     }
 
+    var holdDots by remember { mutableIntStateOf(0) }
+    var gameOpen by remember { mutableStateOf(false) }
+
     WatchFrame(session, onExit) { volume ->
         if (session.ids.isEmpty()) {
-            Status(session.error ?: "Finding reels…")
+            Box(Modifier.fillMaxSize(), Alignment.Center) {
+                session.error?.let { Status(it) } ?: BrandedStatus("CONNECTING")
+            }
             return@WatchFrame
         }
         VerticalPager(state = pager, modifier = Modifier.fillMaxSize()) { page ->
             Box(
                 Modifier
                     .fillMaxSize()
+                    .holdToForceLoad(session, onDots = { holdDots = it }, onGame = { gameOpen = true })
                     .pointerInput(Unit) {
-                        // Tap pauses; double-tap likes, like the YouTube app.
-                        detectTapGestures(onTap = { session.togglePause() }, onDoubleTap = { session.like() })
+                        // Tap pauses; double-tap likes, like the YouTube app. A long press
+                        // is the hold above, so it mustn't also count as a tap.
+                        detectTapGestures(
+                            onTap = { session.togglePause() },
+                            onDoubleTap = { session.toggleLike() },
+                            onLongPress = {},
+                        )
                     },
                 Alignment.Center,
             ) {
                 if (page == session.index) {
                     VideoSurface(player, session.aspectRatio, Modifier.fillMaxHeight())
-                    if (session.loading || session.error != null) Status(session.error ?: "Loading…")
-                    LikeBurst(session.likeBursts)
+                    if (session.waiting || session.error != null) {
+                        session.error?.let { Status(it) }
+                            ?: if (session.waitingWithoutTimeout) BrandedStatus("FORCED BUFFERING", showYt = false)
+                            else BrandedStatus("LOADING")
+                    }
+                    LikeBurst(session.likeBursts, session.lastBurstLiked)
                     Notice(session)
                     if (session.paused && session.current != null) {
                         PausedControls(
@@ -116,6 +141,8 @@ fun ReelsScreen(session: WatchSession, player: ExoPlayer, onExit: () -> Unit) {
                 }
             }
         }
+        HoldDots(holdDots)
+        if (gameOpen) GameOverlay(session, onExit = { gameOpen = false })
     }
 }
 
@@ -125,12 +152,15 @@ fun VideosScreen(session: WatchSession, player: ExoPlayer, onExit: () -> Unit) {
     var showInfo by remember { mutableStateOf(false) }
     BackHandler(enabled = showInfo) { showInfo = false }
     val swipe = with(LocalDensity.current) { 48.dp.toPx() }
+    var holdDots by remember { mutableIntStateOf(0) }
+    var gameOpen by remember { mutableStateOf(false) }
 
     WatchFrame(session, onExit, rotaryEnabled = !showInfo) { volume ->
         Box(
             Modifier
                 .fillMaxSize()
-                .clickable { session.togglePause() }
+                .holdToForceLoad(session, onDots = { holdDots = it }, onGame = { gameOpen = true })
+                .pointerInput(Unit) { detectTapGestures(onTap = { session.togglePause() }, onLongPress = {}) }
                 .pointerInput(Unit) {
                     var dragged = 0f
                     detectVerticalDragGestures(
@@ -141,7 +171,9 @@ fun VideosScreen(session: WatchSession, player: ExoPlayer, onExit: () -> Unit) {
             Alignment.Center,
         ) {
             VideoSurface(player, session.aspectRatio, Modifier.fillMaxWidth())
-            if (session.loading || session.error != null) Status(session.error ?: "Loading…")
+            if (session.waiting || session.error != null) {
+                session.error?.let { Status(it) } ?: BrandedStatus("LOADING")
+            }
             if (session.paused && session.current != null && !showInfo) {
                 PausedControls(session, volume, showInfo = false, session::previous, session::next)
             }
@@ -153,7 +185,88 @@ fun VideosScreen(session: WatchSession, player: ExoPlayer, onExit: () -> Unit) {
         ) {
             session.current?.let { InfoPanel(it, onClose = { showInfo = false }) }
         }
+        HoldDots(holdDots)
+        if (gameOpen) GameOverlay(session, onExit = { gameOpen = false })
     }
+}
+
+private const val HOLD_DOT_MS = 1_500L
+private val HOLD_WOBBLE = 24.dp
+/** Dots needed to force-load (3 s); twice that (6 s) opens the minigame. */
+private const val FORCE_LOAD_DOTS = 2
+private const val GAME_DOTS = FORCE_LOAD_DOTS * 2
+
+/**
+ * Hold on a loading or failed video: a dot appears every 1.5 s. Releasing at 2 dots or
+ * more makes the video wait without a timeout until it's unloaded (for bad networks);
+ * releasing at 4 dots opens the hidden minigame. If the video starts playing mid-hold,
+ * the hold is dropped entirely. Dragging more than [HOLD_WOBBLE] cancels,
+ * so swipes between reels still work. Doesn't consume events, so taps are still seen.
+ */
+private fun Modifier.holdToForceLoad(
+    session: WatchSession,
+    onDots: (Int) -> Unit,
+    onGame: () -> Unit,
+) = pointerInput(session) {
+    awaitEachGesture {
+        val down = awaitFirstDown(requireUnconsumed = false)
+        if (!session.waiting && session.error == null) return@awaitEachGesture
+        val started = down.uptimeMillis
+        var dots = 0
+        while (true) {
+            val event = withTimeoutOrNull(100) { awaitPointerEvent() }
+            // The video got going during the hold: drop it, dots and minigame timer included.
+            if (!session.waiting && session.error == null) {
+                onDots(0)
+                return@awaitEachGesture
+            }
+            val change = event?.changes?.firstOrNull { it.id == down.id }
+            // Pointer times use the same clock as SystemClock.uptimeMillis.
+            val now = change?.uptimeMillis ?: SystemClock.uptimeMillis()
+            dots = ((now - started) / HOLD_DOT_MS).toInt().coerceAtMost(GAME_DOTS)
+            onDots(dots)
+            if (change == null) continue
+            if (!change.pressed) break
+            // A real finger wobbles; only a clear drag (a swipe to another reel) cancels.
+            if ((change.position - down.position).getDistance() > HOLD_WOBBLE.toPx()) {
+                onDots(0)
+                return@awaitEachGesture
+            }
+        }
+        onDots(0)
+        when {
+            dots >= GAME_DOTS -> onGame()
+            dots >= FORCE_LOAD_DOTS -> session.waitWithoutTimeout()
+        }
+    }
+}
+
+/** The hold countdown, top right: white while counting, green once armed, red for the game. */
+@Composable
+private fun HoldDots(dots: Int) {
+    if (dots == 0) return
+    Box(Modifier.fillMaxSize().padding(top = 58.dp, end = 58.dp), Alignment.TopEnd) {
+        Row(horizontalArrangement = Arrangement.spacedBy(5.dp)) {
+            repeat(dots) { i ->
+                val color = when {
+                    dots >= GAME_DOTS -> Color(0xFFFF3040)
+                    i < FORCE_LOAD_DOTS && dots >= FORCE_LOAD_DOTS -> Color(0xFF3DDC84)
+                    else -> Color.White
+                }
+                Box(Modifier.size(9.dp).background(color, CircleShape))
+            }
+        }
+    }
+}
+
+/** The minigame over the video; pauses the video if it finishes loading meanwhile. */
+@Composable
+private fun GameOverlay(session: WatchSession, onExit: () -> Unit) {
+    val ready = !session.waiting && session.error == null && session.current != null
+    LaunchedEffect(ready) {
+        if (ready && !session.paused) session.togglePause()
+    }
+    FlappyGame(videoReady = ready, onExit = onExit)
 }
 
 /**
@@ -205,6 +318,29 @@ private fun VideoSurface(player: ExoPlayer, aspectRatio: Float, modifier: Modifi
     )
 }
 
+/**
+ * Loading screen: YT, then [word] between two thin rules.
+ *
+ *     YT
+ *   ------
+ *   LOADING
+ *   ------
+ */
+@Composable
+private fun BrandedStatus(word: String, showYt: Boolean = true) {
+    Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        if (showYt) Text("YT", style = MaterialTheme.typography.displaySmall, color = Color(0xFFFF2D45))
+        Rule()
+        Text(word, style = MaterialTheme.typography.labelMedium, letterSpacing = 3.sp)
+        Rule()
+    }
+}
+
+@Composable
+private fun Rule() {
+    Box(Modifier.width(96.dp).height(1.dp).background(Color.White.copy(alpha = 0.6f)))
+}
+
 @Composable
 private fun Status(text: String) {
     Text(
@@ -244,7 +380,7 @@ private fun PausedControls(
             )
             Text(
                 listOfNotNull(
-                    "♥".takeIf { video.id in session.liked },
+                    "♥".takeIf { session.liked[video.id] == true },
                     video.channel,
                     video.viewCount?.let { "${compact(it)} views" },
                 ).joinToString(" · "),
@@ -267,31 +403,76 @@ private fun PausedControls(
     }
 }
 
-/** A heart that pops up and fades each time [bursts] goes up. */
+/**
+ * A heart that pops in at the centre each time [bursts] goes up. A like is red and floats
+ * up; an unlike pops in red, then turns grey as it sinks. Both fade out as they go.
+ */
 @Composable
-private fun LikeBurst(bursts: Int) {
+private fun LikeBurst(bursts: Int, liked: Boolean) {
     val alpha = remember { Animatable(0f) }
-    val scale = remember { Animatable(0.6f) }
+    val scale = remember { Animatable(0.5f) }
+    val drift = remember { Animatable(0f) } // 0 at the centre, 1 at the end of the float or sink
+    val grey = remember { Animatable(0f) } // 0 red, 1 grey
+    // Each reel gets a fresh LikeBurst; only animate for likes made while it's on screen.
+    val shownFrom = remember { bursts }
     LaunchedEffect(bursts) {
-        if (bursts == 0) return@LaunchedEffect
+        if (bursts == shownFrom) return@LaunchedEffect
         alpha.snapTo(1f)
-        scale.snapTo(0.6f)
-        scale.animateTo(1f, spring(dampingRatio = 0.45f))
-        delay(350)
-        alpha.animateTo(0f, tween(300))
-    }
-    if (alpha.value > 0f) {
-        Canvas(Modifier.size(110.dp).graphicsLayer { this.alpha = alpha.value; scaleX = scale.value; scaleY = scale.value }) {
-            val w = size.width
-            val h = size.height
-            val heart = Path().apply {
-                moveTo(w / 2, h * 0.9f)
-                cubicTo(w * -0.1f, h * 0.5f, w * 0.15f, h * -0.05f, w / 2, h * 0.28f)
-                cubicTo(w * 0.85f, h * -0.05f, w * 1.1f, h * 0.5f, w / 2, h * 0.9f)
-                close()
+        scale.snapTo(0.5f)
+        drift.snapTo(0f)
+        grey.snapTo(0f)
+        scale.animateTo(1f, spring(dampingRatio = 0.4f, stiffness = 500f))
+        coroutineScope {
+            launch { drift.animateTo(1f, tween(650, easing = FastOutSlowInEasing)) }
+            if (!liked) launch { grey.animateTo(1f, tween(300)) }
+            launch {
+                delay(250)
+                alpha.animateTo(0f, tween(400))
             }
-            drawPath(heart, Color(0xFFFF3040))
         }
+    }
+    if (alpha.value == 0f) return
+    val travel = with(LocalDensity.current) { 110.dp.toPx() }
+    Canvas(
+        Modifier.size(110.dp).graphicsLayer {
+            this.alpha = alpha.value
+            scaleX = scale.value
+            scaleY = scale.value
+            translationY = drift.value * travel * if (liked) -1 else 1
+        },
+    ) {
+        val w = size.width
+        val h = size.height
+        val heart = Path().apply {
+            moveTo(w / 2, h * 0.9f)
+            cubicTo(w * -0.1f, h * 0.5f, w * 0.15f, h * -0.05f, w / 2, h * 0.28f)
+            cubicTo(w * 0.85f, h * -0.05f, w * 1.1f, h * 0.5f, w / 2, h * 0.9f)
+            close()
+        }
+        val g = grey.value
+        // Light top-left to dark bottom-right, so the heart looks rounded.
+        drawPath(
+            heart,
+            Brush.linearGradient(
+                listOf(
+                    lerp(Color(0xFFFF8A95), Color(0xFFE0E0E0), g),
+                    lerp(Color(0xFFFF2D45), Color(0xFF9E9E9E), g),
+                    lerp(Color(0xFFB0102A), Color(0xFF555555), g),
+                ),
+                start = Offset(w * 0.15f, h * 0.1f),
+                end = Offset(w * 0.85f, h * 0.95f),
+            ),
+        )
+        // Soft highlight on the upper left lobe.
+        drawOval(
+            Brush.radialGradient(
+                listOf(Color.White.copy(alpha = 0.55f), Color.Transparent),
+                center = Offset(w * 0.3f, h * 0.3f),
+                radius = w * 0.16f,
+            ),
+            topLeft = Offset(w * 0.16f, h * 0.18f),
+            size = androidx.compose.ui.geometry.Size(w * 0.28f, h * 0.24f),
+        )
     }
 }
 

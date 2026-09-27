@@ -120,19 +120,154 @@ def shorts_feed(token=None, **settings):
     raise RuntimeError("No Shorts available (" + "; ".join(errors) + ")")
 
 
-def like(video_id, **settings):
-    """Likes a video as the signed-in account. Needs cookie_file; raises if YouTube refuses."""
+def home_feed(**settings):
+    """Videos for the menu: the account's YouTube home feed, or, signed out (where YouTube's
+    home is empty), the Most Popular chart via the Data API. Returns JSON: source, videos."""
+    if settings.get("cookie_file"):
+        videos = _flat_videos(":ytrec", settings)
+        if videos:
+            return json.dumps({"source": "home", "videos": videos})
+    api_key = settings.get("api_key")
+    if not api_key:
+        raise RuntimeError("Sign in (cookies.txt) to see your home feed")
+    query = urllib.parse.urlencode({
+        "part": "snippet,contentDetails,statistics", "chart": "mostPopular",
+        "maxResults": 30, "key": api_key,
+    })
+    with _ydl(**settings) as ydl:
+        data = json.loads(ydl.urlopen("https://www.googleapis.com/youtube/v3/videos?" + query).read())
+    videos = [{
+        "id": item["id"],
+        "title": item["snippet"]["title"],
+        "channel": item["snippet"].get("channelTitle"),
+        "duration": _iso_seconds(item.get("contentDetails", {}).get("duration")),
+    } for item in data.get("items", [])]
+    return json.dumps({"source": "popular", "videos": videos})
+
+
+def search(query, **settings):
+    """Search results for the menu. Returns JSON: source, videos."""
+    return json.dumps({"source": "search", "videos": _flat_videos(f"ytsearch30:{query}", settings)})
+
+
+def _flat_videos(url, settings):
+    """Video entries of a feed or search, without resolving each video (fast)."""
+    with _ydl(extract_flat="in_playlist", playlistend=30, **settings) as ydl:
+        info = ydl.extract_info(url, download=False)
+    return [{
+        "id": e["id"],
+        "title": e.get("title") or "",
+        "channel": e.get("channel") or e.get("uploader"),
+        "duration": e.get("duration"),
+    } for e in info.get("entries") or []
+        # Skip channels and playlists mixed into results.
+        if e.get("id") and len(e["id"]) == 11 and e.get("ie_key") in (None, "Youtube")]
+
+
+def _iso_seconds(duration):
+    """PT1H2M3S -> 3723."""
+    m = re.fullmatch(r"PT(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?", duration or "")
+    if not m:
+        return None
+    h, mins, s = (int(x or 0) for x in m.groups())
+    return h * 3600 + mins * 60 + s
+
+
+def like_status(video_id, **settings):
+    """The signed-in account's rating of a video: LIKE, DISLIKE, INDIFFERENT, or SIGNED_OUT."""
+    if not settings.get("cookie_file"):
+        return "SIGNED_OUT"
+    with _account(settings) as ie:
+        if not ie.is_authenticated:
+            return "SIGNED_OUT"
+        return _read_like_status(ie, video_id)
+
+
+def set_like(video_id, liked, **settings):
+    """Makes the account's rating of a video LIKE (liked) or INDIFFERENT (not liked).
+
+    Reads YouTube's current rating first and sends nothing if it already matches, so a
+    watch that is out of step with YouTube (liked elsewhere, an earlier request that did
+    go through) doesn't toggle it the wrong way. Reads it again afterwards, because YouTube
+    can answer 200 and still not apply the change. Raises RuntimeError with a short,
+    user-facing message on any failure. Returns JSON: status (YouTube's rating now) and
+    changed (whether a request was sent).
+    """
     if not settings.get("cookie_file"):
         raise RuntimeError("Sign in (cookies.txt) to like videos")
-    # No api_key: it only helps anonymous requests, and liking is tied to the account.
-    settings = {**settings, "api_key": None}
-    with _ydl(**settings) as ydl:
-        ie = ydl.get_info_extractor("Youtube")
-        ie._real_initialize()
+    want = "LIKE" if liked else "INDIFFERENT"
+    with _account(settings) as ie:
         if not ie.is_authenticated:
-            raise RuntimeError("YouTube cookies have expired; export new ones")
-        ie._call_api("like/like", {"target": {"videoId": video_id}}, video_id, note=False)
-    return True
+            raise RuntimeError("YouTube sign-in expired; export new cookies")
+        before = _read_like_status(ie, video_id)
+        if before == want:
+            return json.dumps({"status": before, "changed": False})
+        # removelike clears a like or a dislike; like replaces a dislike.
+        endpoint = "like/like" if liked else "like/removelike"
+        _youtube_call(lambda: ie._call_api(
+            endpoint, {"target": {"videoId": video_id}}, video_id, note=False))
+        after = _read_like_status(ie, video_id)
+    if after != want:
+        raise RuntimeError(f"YouTube didn't apply it (still {after.lower()})")
+    return json.dumps({"status": after, "changed": True})
+
+
+class _account:
+    """A YouTube extractor signed in with the cookies, for account actions."""
+
+    def __init__(self, settings):
+        # No api_key: it only helps anonymous requests, and these are tied to the account.
+        self.ydl = _ydl(**{**settings, "api_key": None})
+
+    def __enter__(self):
+        ie = self.ydl.__enter__().get_info_extractor("Youtube")
+        ie._real_initialize()
+        return ie
+
+    def __exit__(self, *exc):
+        return self.ydl.__exit__(*exc)
+
+
+def _read_like_status(ie, video_id):
+    data = _youtube_call(lambda: ie._call_api("next", {"videoId": video_id}, video_id, note=False))
+    # likeStatusEntity keys are protobufs that embed the video ID; the response can also
+    # carry entities for other videos, so match on the ID.
+    for entity in _find_key(data, "likeStatusEntity"):
+        key = urllib.parse.unquote(entity.get("key") or "")
+        try:
+            raw = base64.urlsafe_b64decode(key + "=" * (-len(key) % 4))
+        except ValueError:
+            continue
+        if video_id.encode() in raw and entity.get("likeStatus"):
+            return entity["likeStatus"]
+    raise RuntimeError("YouTube didn't say whether it's liked")
+
+
+def _youtube_call(call):
+    """Runs an internal API request, turning YouTube's failures into short messages."""
+    try:
+        return call()
+    except yt_dlp.utils.ExtractorError as e:
+        status = getattr(getattr(e, "cause", None), "status", None)
+        if status in (401, 403):
+            raise RuntimeError("YouTube sign-in expired; export new cookies") from e
+        if status == 429:
+            raise RuntimeError("YouTube is rate-limiting; try again later") from e
+        if status:
+            raise RuntimeError(f"YouTube error {status}") from e
+        raise RuntimeError("Couldn't reach YouTube") from e
+
+
+def _find_key(node, key):
+    if isinstance(node, dict):
+        for k, v in node.items():
+            if k == key:
+                yield v
+            else:
+                yield from _find_key(v, key)
+    elif isinstance(node, list):
+        for item in node:
+            yield from _find_key(item, key)
 
 
 def _sequence_params(video_id):

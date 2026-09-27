@@ -111,6 +111,8 @@ dependencies {
     implementation(libs.androidx.wear.compose.material3)
     implementation(libs.androidx.wear.compose.foundation)
     implementation(libs.androidx.wear.tooling.preview)
+    // The system's text input screen (voice, keyboard, handwriting) for search.
+    implementation(libs.androidx.wear.input)
 
     implementation(libs.androidx.media3.exoplayer)
     implementation(libs.androidx.media3.ui)

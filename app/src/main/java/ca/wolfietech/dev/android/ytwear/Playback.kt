@@ -13,7 +13,9 @@ import androidx.media3.exoplayer.source.ProgressiveMediaSource
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.async
+import kotlinx.coroutines.launch
 
 fun buildPlayer(context: Context): ExoPlayer =
     ExoPlayer.Builder(context)
@@ -48,20 +50,36 @@ private fun mediaSource(stream: Stream): MediaSource {
 /**
  * Resolves video IDs through yt-dlp and remembers the results, so swiping back is instant
  * and upcoming videos can be resolved ahead of time. A signed-in resolve takes ~15 s on a
- * watch (mostly QuickJS solving YouTube's challenge), so prefetching is what makes reels
- * usable. At most two resolves run at once to keep the watch responsive.
+ * watch (mostly QuickJS solving YouTube's challenge), so the video being watched comes
+ * first: [load] starts at once, while [prefetch] works through its list one video at a
+ * time in the background, and a new [prefetch] call replaces whatever was still queued.
  */
 class VideoLoader(private val context: Context, private val scope: CoroutineScope) {
-    private val resolving = Dispatchers.IO.limitedParallelism(2)
     private val cache = mutableMapOf<String, Deferred<ResolvedVideo>>()
+    private val queued = ArrayDeque<String>()
+    private var prefetcher: Job? = null
 
+    /** Resolves [id] now (or returns the resolve already under way or done). */
     fun load(id: String): Deferred<ResolvedVideo> = synchronized(cache) {
         cache[id]?.takeUnless { it.isCompleted && it.getCompletionExceptionOrNull() != null }
-            ?: scope.async(resolving) {
+            ?: scope.async(Dispatchers.IO) {
                 Log.i(TAG, "Resolving $id")
                 YtDlp.resolve(context, "https://www.youtube.com/watch?v=$id")
             }.also { cache[id] = it }
     }
 
-    fun prefetch(ids: List<String>) = ids.forEach(::load)
+    /** Resolves [ids] one after another in the background, dropping any earlier queue. */
+    fun prefetch(ids: List<String>) {
+        synchronized(queued) {
+            queued.clear()
+            queued.addAll(ids)
+        }
+        if (prefetcher?.isActive == true) return
+        prefetcher = scope.launch {
+            while (true) {
+                val id = synchronized(queued) { queued.removeFirstOrNull() } ?: break
+                runCatching { load(id).await() }
+            }
+        }
+    }
 }

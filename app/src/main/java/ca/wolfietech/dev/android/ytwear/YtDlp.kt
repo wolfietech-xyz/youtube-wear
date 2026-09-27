@@ -47,9 +47,42 @@ object YtDlp {
         )
     }
 
-    /** Likes [videoId] as the signed-in account. Throws if there are no valid cookies. */
-    fun like(context: Context, videoId: String) {
-        call(context, "like", videoId)
+    /** The menu's default list: the home feed, or YouTube's Most Popular when signed out. */
+    fun homeFeed(context: Context): VideoList = videoList(call(context, "home_feed").toString())
+
+    fun search(context: Context, query: String): VideoList = videoList(call(context, "search", query).toString())
+
+    private fun videoList(text: String): VideoList {
+        val json = JSONObject(text)
+        val videos = json.getJSONArray("videos")
+        return VideoList(
+            source = json.getString("source"),
+            videos = List(videos.length()) { i ->
+                val v = videos.getJSONObject(i)
+                VideoItem(
+                    id = v.getString("id"),
+                    title = v.optString("title"),
+                    channel = v.optStringOrNull("channel"),
+                    durationSeconds = v.optLongOrNull("duration")?.toInt(),
+                )
+            },
+        )
+    }
+
+    /** Whether the signed-in account likes [videoId]; null when signed out. */
+    fun likeStatus(context: Context, videoId: String): Boolean? =
+        when (val status = call(context, "like_status", videoId).toString()) {
+            "SIGNED_OUT" -> null
+            else -> status == "LIKE"
+        }
+
+    /**
+     * Likes or un-likes [videoId], checking YouTube's current state first. Returns whether
+     * it's liked on YouTube afterwards. Throws with a short, user-facing message on failure.
+     */
+    fun setLike(context: Context, videoId: String, liked: Boolean): Boolean {
+        val json = JSONObject(call(context, "set_like", videoId, liked).toString())
+        return json.getString("status") == "LIKE"
     }
 
     /** Signed-in YouTube cookies (Netscape cookies.txt), if present. Private to the app. */
@@ -101,6 +134,12 @@ data class ResolvedVideo(
     val video: Stream,
     val audio: Stream?,
 )
+
+/** A row in the video menu. */
+data class VideoItem(val id: String, val title: String, val channel: String?, val durationSeconds: Int?)
+
+/** [source] is home, popular or search. */
+data class VideoList(val source: String, val videos: List<VideoItem>)
 
 /** [source] is feed, subscriptions or search; [token] is null on the last page. */
 data class FeedPage(val source: String, val ids: List<String>, val token: String?)
