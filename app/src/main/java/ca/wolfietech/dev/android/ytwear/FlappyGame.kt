@@ -41,7 +41,7 @@ import kotlinx.coroutines.delay
 import kotlin.random.Random
 
 /**
- * Hidden minigame, opened by holding a loading reel for 6 s: flap a play button through the
+ * Hidden minigame, opened by holding a loading Short for 6 s: flap a play button through the
  * gaps between ad bars. Positions are in fractions of the screen so it fits any watch.
  */
 @Composable

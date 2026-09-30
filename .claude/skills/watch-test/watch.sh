@@ -12,7 +12,7 @@
 #   watch.sh shot <name>        screenshot to build/watch-test/<name>.png (then Read it)
 #   watch.sh logs [n]           last n (default 25) app + yt-dlp log lines, API key redacted
 #   watch.sh ui                 texts currently on screen
-#   watch.sh reels              build, install, launch, open Reels, wait for the first frame
+#   watch.sh shorts             build, install, launch, open Shorts, wait for the first frame
 #   watch.sh videos             same for Videos
 set -u
 export MSYS_NO_PATHCONV=1
@@ -114,7 +114,7 @@ case "${1:-}" in
   shot) cmd_shot "$2" ;;
   logs) cmd_logs "${2:-25}" ;;
   ui) cmd_ui ;;
-  reels) open_mode Reels ;;
+  shorts) open_mode Shorts ;;
   videos) open_mode Videos ;;
   *) sed -n '2,20p' "$0" ;;
 esac

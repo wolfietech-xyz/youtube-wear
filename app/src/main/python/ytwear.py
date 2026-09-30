@@ -113,7 +113,7 @@ def shorts_feed(token=None, **settings):
     """
     source, _, value = (token or ":").partition(":")
     errors = []
-    for name, fetch in (("feed", _reel_feed), ("subscriptions", _subscription_shorts),
+    for name, fetch in (("feed", _shorts_feed), ("subscriptions", _subscription_shorts),
                         ("search", _search_shorts)):
         if source and name != source:
             continue
@@ -284,7 +284,7 @@ def _sequence_params(video_id):
     return base64.urlsafe_b64encode(raw).decode()
 
 
-def _reel_feed(continuation, settings):
+def _shorts_feed(continuation, settings):
     """YouTube's own Shorts feed through the internal reel endpoints yt-dlp doesn't cover."""
     with _ydl(**settings) as ydl:
         ie = ydl.get_info_extractor("Youtube")

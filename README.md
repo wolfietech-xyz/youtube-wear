@@ -10,21 +10,21 @@ Not affiliated with YouTube or Google. It uses YouTube's web endpoints the way y
 which YouTube's terms don't allow and which can break whenever YouTube changes them.
 
 <p>
-<img src="store/screenshots/01-reel.png" width="200" alt="A Short playing">
-<img src="store/screenshots/02-reel-paused-controls.png" width="200" alt="Paused Short with controls">
+<img src="store/screenshots/01-short.png" width="200" alt="A Short playing">
+<img src="store/screenshots/02-short-paused-controls.png" width="200" alt="Paused Short with controls">
 <img src="store/screenshots/03-video-info.png" width="200" alt="Video info panel">
 <img src="store/screenshots/04-video.png" width="200" alt="A video playing">
 </p>
 
 ## Features
 
-- **Reels:** your Shorts feed (personalised when signed in), falling back to subscriptions'
-  Shorts, then a search. Swipe between reels; they loop.
+- **Shorts:** your Shorts feed (personalised when signed in), falling back to subscriptions'
+  Shorts, then a search. Swipe between Shorts; they loop.
 - **Videos:** your home feed (YouTube's Most Popular when signed out), Search with the
   watch's keyboard, and Voice search with its speech recognition.
 - **Controls:** tap to pause; paused, previous / play / next and volume. The bezel or crown
   also sets the volume. In a regular video, swipe up for its details.
-- **Likes:** double-tap a reel to like or unlike it.
+- **Likes:** double-tap a Short to like or unlike it.
 - **Bad networks:** Settings has timeouts for likes (8 s) and videos (50 s). Hold a loading
   video until two green dots show, then release, to keep waiting with no timeout.
 - A small hidden extra for long loads.
@@ -47,7 +47,7 @@ Signing in with cookies is not recommended for use.
 
 ```
 app/src/main/java/.../MainActivity.kt   home screen and navigation
-app/src/main/java/.../WatchScreens.kt   reels pager, video screen, controls, hold-to-force-load
+app/src/main/java/.../WatchScreens.kt   Shorts pager, video screen, controls, hold-to-force-load
 app/src/main/java/.../WatchSession.kt   what's playing, likes, timeouts
 app/src/main/java/.../VideoMenu.kt      home feed and search results
 app/src/main/java/.../Playback.kt       ExoPlayer and the resolve / prefetch queue

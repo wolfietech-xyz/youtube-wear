@@ -100,7 +100,7 @@ class MainActivity : ComponentActivity() {
                 AppScaffold {
                     val watching = session
                     when (watching?.mode) {
-                        WatchMode.Reels -> ReelsScreen(watching, player, onExit = ::stopWatching)
+                        WatchMode.Shorts -> ShortsScreen(watching, player, onExit = ::stopWatching)
                         WatchMode.Videos -> VideosScreen(watching, player, onExit = ::stopWatching)
                         null -> if (menu != null) {
                             VideoMenuScreen(
@@ -115,7 +115,7 @@ class MainActivity : ComponentActivity() {
                             SettingsScreen(settings)
                         } else HomeScreen(
                             status,
-                            onReels = { startWatching(WatchMode.Reels) },
+                            onShorts = { startWatching(WatchMode.Shorts) },
                             onVideos = ::openMenu,
                             onImportCookies = ::chooseCookies,
                             onSettings = { showSettings = true },
@@ -195,7 +195,7 @@ class MainActivity : ComponentActivity() {
                 withContext(Dispatchers.IO) { YtDlp.setLike(applicationContext, id, liked) }
         }
         session = when (mode) {
-            WatchMode.Reels -> WatchSession(mode, player, loader, like, settings, lifecycleScope) { token ->
+            WatchMode.Shorts -> WatchSession(mode, player, loader, like, settings, lifecycleScope) { token ->
                 withContext(Dispatchers.IO) { YtDlp.shortsFeed(applicationContext, token) }
             }.apply { start() }
             WatchMode.Videos -> WatchSession(mode, player, loader, like, settings, lifecycleScope)
@@ -251,7 +251,7 @@ class MainActivity : ComponentActivity() {
 @Composable
 fun HomeScreen(
     status: String,
-    onReels: () -> Unit,
+    onShorts: () -> Unit,
     onVideos: () -> Unit,
     onImportCookies: () -> Unit,
     onSettings: () -> Unit,
@@ -261,7 +261,7 @@ fun HomeScreen(
         item {
             Text(status, textAlign = TextAlign.Center, style = MaterialTheme.typography.bodySmall, maxLines = 3)
         }
-        item { Button(onClick = onReels, modifier = Modifier.fillMaxWidth()) { Text("Reels") } }
+        item { Button(onClick = onShorts, modifier = Modifier.fillMaxWidth()) { Text("Shorts") } }
         item { FilledTonalButton(onClick = onVideos, modifier = Modifier.fillMaxWidth()) { Text("Videos") } }
         if (SHOW_IMPORT_COOKIES) {
             item {
@@ -275,5 +275,5 @@ fun HomeScreen(
 @Preview(device = WearDevices.SMALL_ROUND, showSystemUi = true)
 @Composable
 fun HomeScreenPreview() {
-    MaterialTheme { HomeScreen("yt-dlp 2026.09.01", onReels = {}, onVideos = {}, onImportCookies = {}, onSettings = {}) }
+    MaterialTheme { HomeScreen("yt-dlp 2026.09.01", onShorts = {}, onVideos = {}, onImportCookies = {}, onSettings = {}) }
 }

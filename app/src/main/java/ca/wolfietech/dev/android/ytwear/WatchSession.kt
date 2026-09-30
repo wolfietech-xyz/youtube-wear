@@ -20,7 +20,7 @@ import kotlinx.coroutines.isActive
 import kotlinx.coroutines.withTimeout
 import kotlinx.coroutines.launch
 
-enum class WatchMode { Reels, Videos }
+enum class WatchMode { Shorts, Videos }
 
 /** The signed-in account's likes on YouTube. Both run off the main thread. */
 interface Likes {
@@ -32,7 +32,7 @@ interface Likes {
 }
 
 /**
- * A list of videos being watched and which one is playing. Reels come from a paged feed and
+ * A list of videos being watched and which one is playing. Shorts come from a paged feed and
  * loop; videos come from a fixed list and advance when one ends.
  */
 class WatchSession(
@@ -61,7 +61,7 @@ class WatchSession(
         private set
     var paused by mutableStateOf(false)
         private set
-    var aspectRatio by mutableFloatStateOf(if (mode == WatchMode.Reels) 9f / 16f else 16f / 9f)
+    var aspectRatio by mutableFloatStateOf(if (mode == WatchMode.Shorts) 9f / 16f else 16f / 9f)
         private set
 
     /** What the screen shows as liked: the user's latest wish, else YouTube's state. */
@@ -122,7 +122,7 @@ class WatchSession(
     fun start(initialIds: List<String> = emptyList(), startIndex: Int = 0) {
         player.addListener(listener)
         // Shorts loop like they do in the YouTube app.
-        player.repeatMode = if (mode == WatchMode.Reels) Player.REPEAT_MODE_ONE else Player.REPEAT_MODE_OFF
+        player.repeatMode = if (mode == WatchMode.Shorts) Player.REPEAT_MODE_ONE else Player.REPEAT_MODE_OFF
         ids.addAll(initialIds)
         if (ids.isNotEmpty()) select(startIndex.coerceIn(ids.indices)) else loadMore(thenSelectFirst = true)
     }
@@ -298,14 +298,14 @@ class WatchSession(
         scope.launch {
             try {
                 val page = fetch(pageToken)
-                Log.i(TAG, "Got ${page.ids.size} reels from ${page.source}")
+                Log.i(TAG, "Got ${page.ids.size} Shorts from ${page.source}")
                 ids.addAll(page.ids.filterNot { it in ids })
                 pageToken = page.token
                 morePages = page.token != null
                 if (thenSelectFirst) select(0)
             } catch (e: Exception) {
                 if (e is kotlinx.coroutines.CancellationException) throw e
-                Log.e(TAG, "Couldn't load reels", e)
+                Log.e(TAG, "Couldn't load Shorts", e)
                 if (ids.isEmpty()) {
                     error = e.message?.lineSequence()?.firstOrNull() ?: e.toString()
                     loading = false

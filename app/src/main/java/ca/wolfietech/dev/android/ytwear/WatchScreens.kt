@@ -79,12 +79,12 @@ import kotlinx.coroutines.launch
 import android.icu.text.CompactDecimalFormat
 import java.util.Locale
 
-/** Shorts: swipe up or down to move between reels. Paused, it shows the reel's info. */
+/** Shorts: swipe up or down to move between Shorts. Paused, it shows the Short's info. */
 @Composable
-fun ReelsScreen(session: WatchSession, player: ExoPlayer, onExit: () -> Unit) {
+fun ShortsScreen(session: WatchSession, player: ExoPlayer, onExit: () -> Unit) {
     val pager = rememberPagerState { session.ids.size }
     val scope = rememberCoroutineScope()
-    // The pager decides which reel plays once a swipe settles...
+    // The pager decides which Short plays once a swipe settles...
     LaunchedEffect(pager) {
         snapshotFlow { pager.settledPage }.collect { if (session.ids.isNotEmpty()) session.select(it) }
     }
@@ -202,7 +202,7 @@ private const val GAME_DOTS = FORCE_LOAD_DOTS * 2
  * more makes the video wait without a timeout until it's unloaded (for bad networks);
  * releasing at 4 dots opens the hidden minigame. If the video starts playing mid-hold,
  * the hold is dropped entirely. Dragging more than [HOLD_WOBBLE] cancels,
- * so swipes between reels still work. Doesn't consume events, so taps are still seen.
+ * so swipes between Shorts still work. Doesn't consume events, so taps are still seen.
  */
 private fun Modifier.holdToForceLoad(
     session: WatchSession,
@@ -228,7 +228,7 @@ private fun Modifier.holdToForceLoad(
             onDots(dots)
             if (change == null) continue
             if (!change.pressed) break
-            // A real finger wobbles; only a clear drag (a swipe to another reel) cancels.
+            // A real finger wobbles; only a clear drag (a swipe to another Short) cancels.
             if ((change.position - down.position).getDistance() > HOLD_WOBBLE.toPx()) {
                 onDots(0)
                 return@awaitEachGesture
@@ -353,7 +353,7 @@ private fun Status(text: String) {
     )
 }
 
-/** Shown while paused: previous / play / next, volume, and for reels the reel's info. */
+/** Shown while paused: previous / play / next, volume, and for Shorts the Short's info. */
 @Composable
 private fun PausedControls(
     session: WatchSession,
@@ -414,7 +414,7 @@ private fun LikeBurst(bursts: Int, liked: Boolean) {
     val scale = remember { Animatable(0.5f) }
     val drift = remember { Animatable(0f) } // 0 at the centre, 1 at the end of the float or sink
     val grey = remember { Animatable(0f) } // 0 red, 1 grey
-    // Each reel gets a fresh LikeBurst; only animate for likes made while it's on screen.
+    // Each Short gets a fresh LikeBurst; only animate for likes made while it's on screen.
     val shownFrom = remember { bursts }
     LaunchedEffect(bursts) {
         if (bursts == shownFrom) return@LaunchedEffect
