@@ -587,11 +587,11 @@ private fun rememberVolume(): Volume {
     return volume
 }
 
-private enum class Glyphs { Previous, Play, Next, Plus, Minus }
+enum class Glyphs { Previous, Play, Next, Plus, Minus, Mic }
 
 /** Small drawn icons, so the app doesn't need an icon library for five symbols. */
 @Composable
-private fun Glyph(glyph: Glyphs) {
+fun Glyph(glyph: Glyphs) {
     val color = MaterialTheme.colorScheme.onSurface.let { if (glyph == Glyphs.Play) MaterialTheme.colorScheme.onPrimary else it }
     Canvas(Modifier.size(20.dp)) {
         val w = size.width
@@ -620,6 +620,22 @@ private fun Glyph(glyph: Glyphs) {
                 drawRect(color, Offset(w / 2 - bar / 2, h * 0.15f), androidx.compose.ui.geometry.Size(bar, h * 0.7f))
             }
             Glyphs.Minus -> drawRect(color, Offset(w * 0.15f, h / 2 - bar / 2), androidx.compose.ui.geometry.Size(w * 0.7f, bar))
+            Glyphs.Mic -> {
+                drawRoundRect(
+                    color,
+                    Offset(w * 0.36f, h * 0.04f),
+                    androidx.compose.ui.geometry.Size(w * 0.28f, h * 0.5f),
+                    androidx.compose.ui.geometry.CornerRadius(w * 0.14f),
+                )
+                drawArc(
+                    color, 0f, 180f, false,
+                    Offset(w * 0.22f, h * 0.2f),
+                    androidx.compose.ui.geometry.Size(w * 0.56f, h * 0.5f),
+                    style = androidx.compose.ui.graphics.drawscope.Stroke(width = bar * 0.8f),
+                )
+                drawRect(color, Offset(w / 2 - bar * 0.4f, h * 0.7f), androidx.compose.ui.geometry.Size(bar * 0.8f, h * 0.14f))
+                drawRect(color, Offset(w * 0.3f, h * 0.86f), androidx.compose.ui.geometry.Size(w * 0.4f, bar * 0.7f))
+            }
         }
     }
 }

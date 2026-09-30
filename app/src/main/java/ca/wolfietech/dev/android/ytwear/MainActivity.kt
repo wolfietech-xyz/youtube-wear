@@ -47,6 +47,7 @@ private const val SHOW_IMPORT_COOKIES = false
 
 class MainActivity : ComponentActivity() {
     private var status by mutableStateOf("")
+    private lateinit var loginState: LoginState
     private var session by mutableStateOf<WatchSession?>(null)
     private var showSettings by mutableStateOf(false)
     /** The Videos menu while it's open; stays open under a video started from it. */
@@ -82,6 +83,7 @@ class MainActivity : ComponentActivity() {
         status = getString(R.string.status_starting)
         loader = VideoLoader(applicationContext, lifecycleScope)
         settings = Settings(applicationContext)
+        loginState = LoginState(applicationContext)
         player = buildPlayer(this).apply {
             if (BuildConfig.DEBUG) addAnalyticsListener(EventLogger())
             addListener(object : Player.Listener {
@@ -121,11 +123,18 @@ class MainActivity : ComponentActivity() {
                             )
                         } else if (showSettings) {
                             BackHandler { showSettings = false }
-                            SettingsScreen(settings, onEditRegion = ::openRegionInput)
+                            SettingsScreen(
+                                settings,
+                                onEditRegion = ::openRegionInput,
+                                homeShown = loginState.showHome,
+                                onForceHome = loginState::force,
+                            )
                         } else HomeScreen(
                             status,
+                            loginState.showHome,
                             onShorts = { startWatching(WatchMode.Shorts) },
-                            onVideos = ::openMenu,
+                            onHome = ::openHome,
+                            onPopular = ::openPopular,
                             onImportCookies = ::chooseCookies,
                             onSettings = { showSettings = true },
                         )
@@ -141,20 +150,33 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    private fun openMenu() {
-        loadMenu(getString(R.string.menu_home)) { YtDlp.homeFeed(applicationContext) }
+    private fun openHome() {
+        loadMenu(getString(R.string.menu_home), onLoginRejected = loginState::markRejected) {
+            YtDlp.homeFeed(applicationContext)
+        }
+    }
+
+    private fun openPopular() {
+        loadMenu(getString(R.string.menu_popular)) { YtDlp.popular(applicationContext) }
     }
 
     /** Opens the menu (or reuses it) and fills it with [heading] and what [fetch] returns. */
-    private fun loadMenu(heading: String, fetch: () -> VideoList) {
+    private fun loadMenu(heading: String, onLoginRejected: (() -> Unit)? = null, fetch: () -> VideoList) {
         val m = menu ?: VideoMenu().also { menu = it }
         m.heading = heading
         m.loading = true
         m.error = null
         lifecycleScope.launch {
             try {
-                val list = withContext(Dispatchers.IO) { fetch() }
-                if (list.source == "popular") m.heading = getString(R.string.menu_popular)
+                val list = try {
+                    withContext(Dispatchers.IO) { fetch() }
+                } catch (e: Exception) {
+                    if (onLoginRejected == null || !YtDlp.isLoginRejected(e)) throw e
+                    // YouTube refused the login: quietly show Popular instead, and stop offering Home.
+                    onLoginRejected()
+                    m.heading = getString(R.string.menu_popular)
+                    withContext(Dispatchers.IO) { YtDlp.popular(applicationContext) }
+                }
                 m.videos = list.videos
             } catch (e: Exception) {
                 Log.e(TAG, "Couldn't load $heading", e)
@@ -246,12 +268,19 @@ class MainActivity : ComponentActivity() {
                     YtDlp.cookieFile(this@MainActivity).writeText(text)
                     cookies
                 }
+                loginState.refresh()
                 resources.getQuantityString(R.plurals.cookies_imported, count, count)
             } catch (e: Exception) {
                 Log.e(TAG, "Cookie import failed", e)
                 getString(R.string.cookies_import_failed, e.message)
             }
         }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        // Cookies may have been replaced while the app was away.
+        if (::loginState.isInitialized) loginState.refresh()
     }
 
     override fun onStop() {
@@ -269,8 +298,10 @@ class MainActivity : ComponentActivity() {
 @Composable
 fun HomeScreen(
     status: String,
+    signedIn: Boolean,
     onShorts: () -> Unit,
-    onVideos: () -> Unit,
+    onHome: () -> Unit,
+    onPopular: () -> Unit,
     onImportCookies: () -> Unit,
     onSettings: () -> Unit,
 ) {
@@ -280,7 +311,10 @@ fun HomeScreen(
             Text(status, textAlign = TextAlign.Center, style = MaterialTheme.typography.bodySmall, maxLines = 3)
         }
         item { Button(onClick = onShorts, modifier = Modifier.fillMaxWidth()) { Text(stringResource(R.string.home_shorts)) } }
-        item { FilledTonalButton(onClick = onVideos, modifier = Modifier.fillMaxWidth()) { Text(stringResource(R.string.home_videos)) } }
+        if (signedIn) {
+            item { FilledTonalButton(onClick = onHome, modifier = Modifier.fillMaxWidth()) { Text(stringResource(R.string.home_feed)) } }
+        }
+        item { FilledTonalButton(onClick = onPopular, modifier = Modifier.fillMaxWidth()) { Text(stringResource(R.string.home_popular)) } }
         if (SHOW_IMPORT_COOKIES) {
             item {
                 FilledTonalButton(onClick = onImportCookies, modifier = Modifier.fillMaxWidth()) { Text(stringResource(R.string.home_import_cookies)) }
@@ -293,5 +327,5 @@ fun HomeScreen(
 @Preview(device = WearDevices.SMALL_ROUND, showSystemUi = true)
 @Composable
 fun HomeScreenPreview() {
-    MaterialTheme { HomeScreen("yt-dlp 2026.09.01", onShorts = {}, onVideos = {}, onImportCookies = {}, onSettings = {}) }
+    MaterialTheme { HomeScreen("yt-dlp 2026.09.01", signedIn = true, onShorts = {}, onHome = {}, onPopular = {}, onImportCookies = {}, onSettings = {}) }
 }

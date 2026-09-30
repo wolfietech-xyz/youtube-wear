@@ -9,6 +9,7 @@ import com.chaquo.python.android.AndroidPlatform
 import org.json.JSONObject
 import java.io.File
 import java.security.MessageDigest
+import java.util.Locale
 
 /** Kotlin side of app/src/main/python/ytwear.py. Calls block, so run them off the main thread. */
 object YtDlp {
@@ -50,7 +51,15 @@ object YtDlp {
     }
 
     /** The menu's default list: the home feed, or YouTube's Most Popular when signed out. */
+    /** The signed-in account's home feed. No region is sent; the account decides. */
     fun homeFeed(context: Context): VideoList = videoList(call(context, "home_feed").toString())
+
+    /** The Most Popular chart, for the debug region override if set, else the watch's region. */
+    fun popular(context: Context): VideoList =
+        videoList(call(context, "popular", region = regionOverride(context) ?: localeRegion()).toString())
+
+    /** Whether [e] is YouTube refusing the login, as opposed to any other failure. */
+    fun isLoginRejected(e: Exception): Boolean = e.message?.contains("LOGIN_REJECTED") == true
 
     fun search(context: Context, query: String): VideoList = videoList(call(context, "search", query).toString())
 
@@ -91,7 +100,12 @@ object YtDlp {
     fun cookieFile(context: Context) = File(context.filesDir, "cookies.txt")
 
     /** Calls a ytwear function with the settings every call shares (see ytwear.py). */
-    private fun call(context: Context, function: String, vararg args: Any?): PyObject {
+    private fun call(
+        context: Context,
+        function: String,
+        vararg args: Any?,
+        region: String? = regionOverride(context),
+    ): PyObject {
         // Built from app/src/main/cpp/quickjs-ng and extracted here at install time.
         val qjs = File(context.applicationInfo.nativeLibraryDir, "libqjs.so").path
         return module(context).callAttr(
@@ -101,7 +115,7 @@ object YtDlp {
             Kwarg("cookie_file", cookieFile(context).takeIf { it.exists() }?.path),
             Kwarg("qjs_path", qjs),
             Kwarg("verbose", BuildConfig.DEBUG),
-            Kwarg("region", regionOverride(context)),
+            Kwarg("region", region),
             Kwarg("android_package", context.packageName),
             Kwarg("android_cert", signingCertSha1(context)),
         )
@@ -112,6 +126,9 @@ object YtDlp {
         if (!BuildConfig.DEBUG) null
         else context.getSharedPreferences("settings", Context.MODE_PRIVATE)
             .getString(Settings.REGION_KEY, null)?.takeIf { it.isNotEmpty() }
+
+    /** The watch's country from its language setting, or null when there is none. */
+    private fun localeRegion(): String? = Locale.getDefault().country.takeIf { it.length == 2 }
 
     private var certSha1: String? = null
 

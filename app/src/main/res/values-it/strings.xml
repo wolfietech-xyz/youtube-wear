@@ -8,7 +8,8 @@
     <!-- Home screen -->
     <string name="status_starting">avvio…</string>
     <string name="home_shorts">Shorts</string>
-    <string name="home_videos">Video</string>
+    <string name="home_feed">Home</string>
+    <string name="home_popular">Popolari</string>
     <string name="home_import_cookies">Importa cookie</string>
     <string name="home_settings">Impostazioni</string>
 
@@ -39,7 +40,10 @@
     <string name="settings_video_timeout">Timeout video</string>
     <string name="settings_region">Regione: %1$s</string>
     <string name="settings_region_auto">Auto</string>
-    <string name="region_prompt">Codice regione, es. IT (vuoto per Auto)</string>
+    <string name="settings_force_home">Mostra pulsante Home</string>
+    <string name="settings_home_shown">Pulsante Home mostrato</string>
+    <string name="region_prompt">Codice regione, es. IT</string>
+    <string name="settings_region_cleared">Regione azzerata</string>
     <string name="settings_seconds">%1$d s</string>
 
     <!-- Loading screens -->

@@ -10,7 +10,8 @@
     <!-- Home screen -->
     <string name="status_starting">starting…</string>
     <string name="home_shorts">Shorts</string>
-    <string name="home_videos">Videos</string>
+    <string name="home_feed">Home</string>
+    <string name="home_popular">Popular</string>
     <string name="home_import_cookies">Import cookies</string>
     <string name="home_settings">Settings</string>
 
@@ -42,7 +43,11 @@
     <!-- Debug builds only. %1$s is a two-letter country code or "Auto". -->
     <string name="settings_region">Region: %1$s</string>
     <string name="settings_region_auto">Auto</string>
-    <string name="region_prompt">Region code, e.g. IT (empty for Auto)</string>
+    <!-- Debug builds only: shows the Home button without asking YouTube. -->
+    <string name="settings_force_home">Show Home button</string>
+    <string name="settings_home_shown">Home button shown</string>
+    <string name="region_prompt">Region code, e.g. IT</string>
+    <string name="settings_region_cleared">Region cleared</string>
     <string name="settings_seconds">%1$d s</string>
 
     <!-- Loading screens. Shown in capitals; write them in normal case. -->

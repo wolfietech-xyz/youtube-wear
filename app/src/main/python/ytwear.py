@@ -33,6 +33,9 @@ WATCH_FORMAT_SORT = ["res:360", "vcodec:h264", "acodec:aac"]
 SHORTS_PAGE = "https://www.youtube.com/shorts"
 SUBSCRIPTION_SHORTS = "https://www.youtube.com/feed/subscriptions/shorts"
 
+# The error home_feed raises when YouTube says the login has no session.
+LOGIN_REJECTED = "LOGIN_REJECTED"
+
 
 def version():
     return yt_dlp.version.__version__
@@ -137,19 +140,41 @@ def shorts_feed(token=None, **settings):
 
 
 def home_feed(**settings):
-    """Videos for the menu: the account's YouTube home feed, or, signed out (where YouTube's
-    home is empty), the Most Popular chart via the Data API. Returns JSON: source, videos."""
-    if settings.get("cookie_file"):
+    """Videos for the menu: the account's own YouTube home feed. Needs the login cookies, and sends
+    no region, so the account decides. Returns JSON: source, videos.
+
+    Raises RuntimeError(LOGIN_REJECTED) only when YouTube itself says this login has no session.
+    Network trouble and everything else raise other errors, so they can be told apart."""
+    if not settings.get("cookie_file"):
+        raise RuntimeError(LOGIN_REJECTED)
+    failure = None
+    try:
         videos = _flat_videos(":ytrec", settings)
-        if videos:
-            return json.dumps({"source": "home", "videos": videos})
+    except Exception as e:
+        videos, failure = [], e
+    if videos:
+        return json.dumps({"source": "home", "videos": videos})
+    # Nothing came back. Ask YouTube whether it still accepts the login; if even that fails
+    # (no network), that error is what the caller sees.
+    if not _login_accepted(settings):
+        raise RuntimeError(LOGIN_REJECTED)
+    if failure:
+        raise failure
+    raise RuntimeError("YouTube's home feed came back empty")
+
+
+def popular(**settings):
+    """YouTube's Most Popular chart through the Data API. The one place a region matters: it is
+    sent as regionCode when given (the watch's region, or the debug override).
+    Returns JSON: source, videos."""
     api_key = settings.get("api_key")
     if not api_key:
-        raise RuntimeError("Sign in (cookies.txt) to see your home feed")
+        raise RuntimeError("No YouTube API key in this build")
+    region = settings.pop("region", None)
     with _ydl(**settings) as ydl:
         data = _data_api(ydl, "videos", part="snippet,contentDetails", chart="mostPopular",
                          maxResults=30, key=api_key,
-                         **({"regionCode": settings["region"]} if settings.get("region") else {}))
+                         **({"regionCode": region} if region else {}))
     videos = [{
         "id": item["id"],
         "title": item["snippet"]["title"],
@@ -157,6 +182,17 @@ def home_feed(**settings):
         "duration": _iso_seconds(item.get("contentDetails", {}).get("duration")),
     } for item in data.get("items", [])]
     return json.dumps({"source": "popular", "videos": videos})
+
+
+def _login_accepted(settings):
+    """True or False when YouTube's home page says whether the cookies are a session; raises when it
+    can't be read (no network, or a page without the answer, such as a consent screen)."""
+    with _ydl(**settings) as ydl:
+        page = ydl.urlopen(Request("https://www.youtube.com/")).read().decode("utf-8", "replace")
+    m = re.search(r'"LOGGED_IN":(true|false)', page)
+    if not m:
+        raise RuntimeError("Couldn't tell whether YouTube accepts the login")
+    return m.group(1) == "true"
 
 
 def search(query, **settings):
