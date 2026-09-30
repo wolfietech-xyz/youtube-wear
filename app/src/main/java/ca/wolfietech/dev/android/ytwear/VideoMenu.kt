@@ -8,6 +8,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.wear.compose.foundation.lazy.ScalingLazyColumn
@@ -19,7 +20,7 @@ import androidx.wear.compose.material3.Text
 
 /** What the video menu shows: a heading and a list, or a load in progress, or an error. */
 class VideoMenu {
-    var heading by mutableStateOf("Home")
+    var heading by mutableStateOf("")
     var videos by mutableStateOf<List<VideoItem>>(emptyList())
     var loading by mutableStateOf(true)
     var error by mutableStateOf<String?>(null)
@@ -37,18 +38,18 @@ fun VideoMenuScreen(
     BackHandler(onBack = onBack)
     ScalingLazyColumn(Modifier.fillMaxWidth()) {
         item {
-            Button(onClick = onSearch, modifier = Modifier.fillMaxWidth()) { Text("Search") }
+            Button(onClick = onSearch, modifier = Modifier.fillMaxWidth()) { Text(stringResource(R.string.menu_search)) }
         }
         item {
-            FilledTonalButton(onClick = onVoiceSearch, modifier = Modifier.fillMaxWidth()) { Text("Voice search") }
+            FilledTonalButton(onClick = onVoiceSearch, modifier = Modifier.fillMaxWidth()) { Text(stringResource(R.string.menu_voice_search)) }
         }
         item { Text(menu.heading, style = MaterialTheme.typography.titleSmall, textAlign = TextAlign.Center) }
         when {
-            menu.loading -> item { Text("Loading…", style = MaterialTheme.typography.bodySmall) }
+            menu.loading -> item { Text(stringResource(R.string.menu_loading), style = MaterialTheme.typography.bodySmall) }
             menu.error != null -> item {
                 Text(menu.error!!, style = MaterialTheme.typography.bodySmall, textAlign = TextAlign.Center)
             }
-            menu.videos.isEmpty() -> item { Text("No videos", style = MaterialTheme.typography.bodySmall) }
+            menu.videos.isEmpty() -> item { Text(stringResource(R.string.menu_no_videos), style = MaterialTheme.typography.bodySmall) }
             else -> itemsIndexed(menu.videos) { index, video ->
                 FilledTonalButton(onClick = { onPlay(index) }, modifier = Modifier.fillMaxWidth()) {
                     Column {

@@ -51,6 +51,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.geometry.Offset
@@ -99,7 +100,7 @@ fun ShortsScreen(session: WatchSession, player: ExoPlayer, onExit: () -> Unit) {
     WatchFrame(session, onExit) { volume ->
         if (session.ids.isEmpty()) {
             Box(Modifier.fillMaxSize(), Alignment.Center) {
-                session.error?.let { Status(it) } ?: BrandedStatus("CONNECTING")
+                session.error?.let { Status(it) } ?: BrandedStatus(stringResource(R.string.status_connecting))
             }
             return@WatchFrame
         }
@@ -123,8 +124,8 @@ fun ShortsScreen(session: WatchSession, player: ExoPlayer, onExit: () -> Unit) {
                     VideoSurface(player, session.aspectRatio, Modifier.fillMaxHeight())
                     if (session.waiting || session.error != null) {
                         session.error?.let { Status(it) }
-                            ?: if (session.waitingWithoutTimeout) BrandedStatus("FORCED BUFFERING", showYt = false)
-                            else BrandedStatus("LOADING")
+                            ?: if (session.waitingWithoutTimeout) BrandedStatus(stringResource(R.string.status_forced_buffering), showYt = false)
+                            else BrandedStatus(stringResource(R.string.status_loading))
                     }
                     LikeBurst(session.likeBursts, session.lastBurstLiked)
                     Notice(session)
@@ -173,7 +174,7 @@ fun VideosScreen(session: WatchSession, player: ExoPlayer, onExit: () -> Unit) {
         ) {
             VideoSurface(player, session.aspectRatio, Modifier.fillMaxWidth())
             if (session.waiting || session.error != null) {
-                session.error?.let { Status(it) } ?: BrandedStatus("LOADING")
+                session.error?.let { Status(it) } ?: BrandedStatus(stringResource(R.string.status_loading))
             }
             if (session.paused && session.current != null && !showInfo) {
                 PausedControls(session, volume, showInfo = false, session::previous, session::next)
@@ -332,7 +333,7 @@ private fun BrandedStatus(word: String, showYt: Boolean = true) {
     Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(6.dp)) {
         if (showYt) Text("YT", style = MaterialTheme.typography.displaySmall, color = Color(0xFFFF2D45))
         Rule()
-        Text(word, style = MaterialTheme.typography.labelMedium, letterSpacing = 3.sp)
+        Text(word.uppercase(Locale.getDefault()), style = MaterialTheme.typography.labelMedium, letterSpacing = 3.sp)
         Rule()
     }
 }
@@ -383,7 +384,7 @@ private fun PausedControls(
                 listOfNotNull(
                     "♥".takeIf { session.liked[video.id] == true },
                     video.channel,
-                    video.viewCount?.let { "${compact(it)} views" },
+                    video.viewCount?.let { stringResource(R.string.info_views, compact(it)) },
                 ).joinToString(" · "),
                 style = MaterialTheme.typography.bodyExtraSmall,
                 textAlign = TextAlign.Center,
@@ -398,7 +399,7 @@ private fun PausedControls(
         }
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
             FilledTonalIconButton(onClick = { volume.step(-1) }) { Glyph(Glyphs.Minus) }
-            Text("Vol ${volume.level}", style = MaterialTheme.typography.labelMedium)
+            Text(stringResource(R.string.player_volume, volume.level), style = MaterialTheme.typography.labelMedium)
             FilledTonalIconButton(onClick = { volume.step(1) }) { Glyph(Glyphs.Plus) }
         }
     }
@@ -533,8 +534,8 @@ private fun InfoPanel(video: ResolvedVideo, onClose: () -> Unit) {
         video.channel?.let { Text(it, style = MaterialTheme.typography.labelMedium, textAlign = TextAlign.Center) }
         Text(
             listOfNotNull(
-                video.viewCount?.let { "${compact(it)} views" },
-                video.likeCount?.let { "${compact(it)} likes" },
+                video.viewCount?.let { stringResource(R.string.info_views, compact(it)) },
+                video.likeCount?.let { stringResource(R.string.info_likes, compact(it)) },
                 video.uploadDate?.let(::formatDate),
             ).joinToString(" · "),
             style = MaterialTheme.typography.bodyExtraSmall,

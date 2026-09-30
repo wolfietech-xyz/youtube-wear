@@ -1,5 +1,6 @@
 package ca.wolfietech.dev.android.ytwear
 
+import android.content.Context
 import android.util.Log
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
@@ -42,6 +43,7 @@ class WatchSession(
     private val likes: Likes,
     private val settings: Settings,
     private val scope: CoroutineScope,
+    private val context: Context,
     /** Fetches the next page of IDs, or null for a fixed list. */
     private val nextPage: (suspend (token: String?) -> FeedPage)? = null,
 ) {
@@ -115,7 +117,7 @@ class WatchSession(
 
         override fun onPlayerError(error: PlaybackException) {
             Log.e(TAG, "Playback failed", error)
-            this@WatchSession.error = "Playback: ${error.errorCodeName}"
+            this@WatchSession.error = context.getString(R.string.error_playback, error.errorCodeName)
         }
     }
 
@@ -164,7 +166,7 @@ class WatchSession(
                 if (e is kotlinx.coroutines.CancellationException) throw e
                 Log.e(TAG, "Couldn't load $id", e)
                 watchdog?.cancel()
-                error = (e.message?.lineSequence()?.firstOrNull() ?: e.toString()) + ". Tap to retry"
+                error = context.getString(R.string.error_retry, e.message?.lineSequence()?.firstOrNull() ?: e.toString())
             } finally {
                 loading = false
             }
@@ -204,7 +206,7 @@ class WatchSession(
             playJob?.cancel()
             player.stop()
             loading = false
-            error = "Timed out after $seconds s. Tap to retry"
+            error = context.getString(R.string.error_timed_out, seconds)
         }
     }
 
@@ -215,7 +217,7 @@ class WatchSession(
 
     /** Double-tap: likes the current video, or un-likes it if it's already liked. */
     fun toggleLike() {
-        val id = current?.id ?: run { notice = "Still loading"; return }
+        val id = current?.id ?: run { notice = context.getString(R.string.notice_still_loading); return }
         val want = liked[id] != true
         liked[id] = want
         lastBurstLiked = want
@@ -242,7 +244,7 @@ class WatchSession(
                             withTimeout(seconds * 1_000L) { likes.set(id, want) }
                         } catch (e: TimeoutCancellationException) {
                             // The request may still land later; the next like checks YouTube first.
-                            throw RuntimeException("${if (want) "Like" else "Unlike"} timed out after $seconds s", e)
+                            throw RuntimeException(context.getString(if (want) R.string.like_timed_out else R.string.unlike_timed_out, seconds), e)
                         }
                         confirmedLikes[id] = actual
                         Log.i(TAG, "${if (actual) "Liked" else "Unliked"} $id")
@@ -256,7 +258,7 @@ class WatchSession(
                         Log.e(TAG, "Couldn't ${if (want) "like" else "unlike"} $id", e)
                         if (liked[id] == want) {
                             confirmedLikes[id]?.let { liked[id] = it } ?: liked.remove(id)
-                            notice = shortMessage(e, if (want) "Couldn't like" else "Couldn't unlike")
+                            notice = shortMessage(e, context.getString(if (want) R.string.notice_like_failed else R.string.notice_unlike_failed))
                             break
                         }
                     }

@@ -68,6 +68,11 @@ android {
     }
 
     buildTypes {
+        debug {
+            // en-XA / ar-XB pseudo-locales: mangle every string that comes from resources, so
+            // text that is still hard-coded in the code stands out on the watch.
+            isPseudoLocalesEnabled = true
+        }
         release {
             signingConfig = signingConfigs.findByName("release")
             isMinifyEnabled = true

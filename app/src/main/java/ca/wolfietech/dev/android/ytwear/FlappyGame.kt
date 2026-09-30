@@ -22,6 +22,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
@@ -110,8 +111,8 @@ fun FlappyGame(videoReady: Boolean, onExit: () -> Unit) {
             style = MaterialTheme.typography.titleMedium,
         )
         when {
-            game.over -> Message("Ads skipped: ${game.score}\nBest: $best\n\nTap to play again")
-            !game.started -> Message("Flappy Play\n\nTap to flap\nDodge the ads")
+            game.over -> Message(stringResource(R.string.game_over, game.score, best))
+            !game.started -> Message(stringResource(R.string.game_intro))
         }
         ReadyCard(videoReady, modifier = Modifier.align(Alignment.BottomCenter))
     }
@@ -135,7 +136,7 @@ private fun ReadyCard(videoReady: Boolean, modifier: Modifier) {
     }
     AnimatedVisibility(visible, modifier.padding(bottom = 24.dp), enter = fadeIn(), exit = fadeOut()) {
         Text(
-            "Video ready · swipe back to watch",
+            stringResource(R.string.game_video_ready),
             modifier = Modifier
                 .background(Color(0xE6202020), RoundedCornerShape(50))
                 .padding(horizontal = 12.dp, vertical = 6.dp),

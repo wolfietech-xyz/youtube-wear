@@ -17,6 +17,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.lifecycle.lifecycleScope
@@ -44,7 +45,7 @@ private const val SEARCH_QUERY = "query"
 private const val SHOW_IMPORT_COOKIES = false
 
 class MainActivity : ComponentActivity() {
-    private var status by mutableStateOf("starting…")
+    private var status by mutableStateOf("")
     private var session by mutableStateOf<WatchSession?>(null)
     private var showSettings by mutableStateOf(false)
     /** The Videos menu while it's open; stays open under a video started from it. */
@@ -71,6 +72,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        status = getString(R.string.status_starting)
         loader = VideoLoader(applicationContext, lifecycleScope)
         settings = Settings(applicationContext)
         player = buildPlayer(this).apply {
@@ -133,7 +135,7 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun openMenu() {
-        loadMenu("Home") { YtDlp.homeFeed(applicationContext) }
+        loadMenu(getString(R.string.menu_home)) { YtDlp.homeFeed(applicationContext) }
     }
 
     /** Opens the menu (or reuses it) and fills it with [heading] and what [fetch] returns. */
@@ -145,12 +147,12 @@ class MainActivity : ComponentActivity() {
         lifecycleScope.launch {
             try {
                 val list = withContext(Dispatchers.IO) { fetch() }
-                if (list.source == "popular") m.heading = "Popular"
+                if (list.source == "popular") m.heading = getString(R.string.menu_popular)
                 m.videos = list.videos
             } catch (e: Exception) {
                 Log.e(TAG, "Couldn't load $heading", e)
                 m.error = e.message?.lineSequence()?.lastOrNull { it.isNotBlank() }
-                    ?.replace(Regex("^\\w+(Error|Exception): "), "") ?: "Couldn't load videos"
+                    ?.replace(Regex("^\\w+(Error|Exception): "), "") ?: getString(R.string.menu_error_load_videos)
             } finally {
                 m.loading = false
             }
@@ -161,7 +163,7 @@ class MainActivity : ComponentActivity() {
         val intent = RemoteInputIntentHelper.createActionRemoteInputIntent()
         RemoteInputIntentHelper.putRemoteInputsExtra(
             intent,
-            listOf(RemoteInput.Builder(SEARCH_QUERY).setLabel("Search YouTube").build()),
+            listOf(RemoteInput.Builder(SEARCH_QUERY).setLabel(getString(R.string.menu_search_prompt)).build()),
         )
         askSearch.launch(intent)
     }
@@ -169,11 +171,11 @@ class MainActivity : ComponentActivity() {
     private fun openVoiceSearch() {
         val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH)
             .putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
-            .putExtra(RecognizerIntent.EXTRA_PROMPT, "Search YouTube")
+            .putExtra(RecognizerIntent.EXTRA_PROMPT, getString(R.string.menu_search_prompt))
         try {
             askVoice.launch(intent)
         } catch (e: ActivityNotFoundException) {
-            menu?.error = "No voice input on this watch"
+            menu?.error = getString(R.string.menu_no_voice_input)
         }
     }
 
@@ -195,10 +197,10 @@ class MainActivity : ComponentActivity() {
                 withContext(Dispatchers.IO) { YtDlp.setLike(applicationContext, id, liked) }
         }
         session = when (mode) {
-            WatchMode.Shorts -> WatchSession(mode, player, loader, like, settings, lifecycleScope) { token ->
+            WatchMode.Shorts -> WatchSession(mode, player, loader, like, settings, lifecycleScope, applicationContext) { token ->
                 withContext(Dispatchers.IO) { YtDlp.shortsFeed(applicationContext, token) }
             }.apply { start() }
-            WatchMode.Videos -> WatchSession(mode, player, loader, like, settings, lifecycleScope)
+            WatchMode.Videos -> WatchSession(mode, player, loader, like, settings, lifecycleScope, applicationContext)
                 .apply { start(videoIds, startIndex) }
         }
     }
@@ -212,7 +214,7 @@ class MainActivity : ComponentActivity() {
         try {
             pickCookies.launch(arrayOf("text/plain", "*/*"))
         } catch (e: ActivityNotFoundException) {
-            status = "This watch has no file picker"
+            status = getString(R.string.cookies_no_picker)
         }
     }
 
@@ -224,14 +226,14 @@ class MainActivity : ComponentActivity() {
                     val text = contentResolver.openInputStream(uri)!!.use { it.readBytes().decodeToString() }
                     // Netscape format: 7 tab-separated fields per cookie line.
                     val cookies = text.lineSequence().count { it.split('\t').size == 7 }
-                    require(cookies > 0) { "Not a cookies.txt file" }
+                    require(cookies > 0) { getString(R.string.cookies_not_a_file) }
                     YtDlp.cookieFile(this@MainActivity).writeText(text)
                     cookies
                 }
-                "Imported $count cookies"
+                resources.getQuantityString(R.plurals.cookies_imported, count, count)
             } catch (e: Exception) {
                 Log.e(TAG, "Cookie import failed", e)
-                "Cookie import: ${e.message}"
+                getString(R.string.cookies_import_failed, e.message)
             }
         }
     }
@@ -257,18 +259,18 @@ fun HomeScreen(
     onSettings: () -> Unit,
 ) {
     ScalingLazyColumn(Modifier.fillMaxWidth()) {
-        item { Text("YouTube Wear", style = MaterialTheme.typography.titleMedium) }
+        item { Text(stringResource(R.string.app_name), style = MaterialTheme.typography.titleMedium) }
         item {
             Text(status, textAlign = TextAlign.Center, style = MaterialTheme.typography.bodySmall, maxLines = 3)
         }
-        item { Button(onClick = onShorts, modifier = Modifier.fillMaxWidth()) { Text("Shorts") } }
-        item { FilledTonalButton(onClick = onVideos, modifier = Modifier.fillMaxWidth()) { Text("Videos") } }
+        item { Button(onClick = onShorts, modifier = Modifier.fillMaxWidth()) { Text(stringResource(R.string.home_shorts)) } }
+        item { FilledTonalButton(onClick = onVideos, modifier = Modifier.fillMaxWidth()) { Text(stringResource(R.string.home_videos)) } }
         if (SHOW_IMPORT_COOKIES) {
             item {
-                FilledTonalButton(onClick = onImportCookies, modifier = Modifier.fillMaxWidth()) { Text("Import cookies") }
+                FilledTonalButton(onClick = onImportCookies, modifier = Modifier.fillMaxWidth()) { Text(stringResource(R.string.home_import_cookies)) }
             }
         }
-        item { FilledTonalButton(onClick = onSettings, modifier = Modifier.fillMaxWidth()) { Text("Settings") } }
+        item { FilledTonalButton(onClick = onSettings, modifier = Modifier.fillMaxWidth()) { Text(stringResource(R.string.home_settings)) } }
     }
 }
 

@@ -1,3 +1,68 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  English source strings. To translate, copy this file to values-<language>/strings.xml
+  (for example values-es) and translate the text; see TRANSLATING.md.
+-->
 <resources>
     <string name="app_name">YouTube Wear</string>
+
+    <!-- Home screen -->
+    <string name="status_starting">starting…</string>
+    <string name="home_shorts">Shorts</string>
+    <string name="home_videos">Videos</string>
+    <string name="home_import_cookies">Import cookies</string>
+    <string name="home_settings">Settings</string>
+
+    <!-- Videos menu -->
+    <string name="menu_home">Home</string>
+    <string name="menu_popular">Popular</string>
+    <string name="menu_search">Search</string>
+    <string name="menu_voice_search">Voice search</string>
+    <string name="menu_loading">Loading…</string>
+    <string name="menu_no_videos">No videos</string>
+    <string name="menu_search_prompt">Search YouTube</string>
+    <string name="menu_error_load_videos">Couldn\'t load videos</string>
+    <string name="menu_no_voice_input">No voice input on this watch</string>
+
+    <!-- Cookie import -->
+    <string name="cookies_no_picker">This watch has no file picker</string>
+    <string name="cookies_not_a_file">Not a cookies.txt file</string>
+    <plurals name="cookies_imported">
+        <item quantity="one">Imported %d cookie</item>
+        <item quantity="other">Imported %d cookies</item>
+    </plurals>
+    <string name="cookies_import_failed">Cookie import: %1$s</string>
+
+    <!-- Settings -->
+    <string name="settings_title">Settings</string>
+    <string name="settings_like_timeout">Like timeout</string>
+    <string name="settings_video_timeout">Video timeout</string>
+    <!-- A number of seconds, for example "8 s" -->
+    <string name="settings_seconds">%1$d s</string>
+
+    <!-- Loading screens. Shown in capitals; write them in normal case. -->
+    <string name="status_connecting">Connecting</string>
+    <string name="status_loading">Loading</string>
+    <string name="status_forced_buffering">Forced buffering</string>
+
+    <!-- Paused controls and video info -->
+    <string name="player_volume">Vol %1$d</string>
+    <!-- %1$s is a short count such as 1.2K -->
+    <string name="info_views">%1$s views</string>
+    <string name="info_likes">%1$s likes</string>
+
+    <!-- Errors and notices while watching -->
+    <string name="error_playback">Playback: %1$s</string>
+    <string name="error_retry">%1$s. Tap to retry</string>
+    <string name="error_timed_out">Timed out after %1$d s. Tap to retry</string>
+    <string name="notice_still_loading">Still loading</string>
+    <string name="notice_like_failed">Couldn\'t like</string>
+    <string name="notice_unlike_failed">Couldn\'t unlike</string>
+    <string name="like_timed_out">Like timed out after %1$d s</string>
+    <string name="unlike_timed_out">Unlike timed out after %1$d s</string>
+
+    <!-- Hidden minigame -->
+    <string name="game_over">Ads skipped: %1$d\nBest: %2$d\n\nTap to play again</string>
+    <string name="game_intro">Flappy Play\n\nTap to flap\nDodge the ads</string>
+    <string name="game_video_ready">Video ready · swipe back to watch</string>
 </resources>
