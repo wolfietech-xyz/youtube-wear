@@ -17,6 +17,12 @@ android {
     // Compile against the newest stable platform; targetSdk is what Play enforces.
     compileSdk = 37
 
+    // The languages the app is translated into (res/values-*/ and the English default declared in
+    // res/resources.properties), for the per-app language setting. See TRANSLATING.md.
+    androidResources {
+        generateLocaleConfig = true
+    }
+
     // NDK r30 (LTS). r28+ links with 16 KB page alignment by default, which Play requires.
     ndkVersion = "30.0.16248370"
 

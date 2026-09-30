@@ -1,9 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <!--
-  English source strings. To translate, copy this file to values-<language>/strings.xml
-  (for example values-es) and translate the text; see TRANSLATING.md.
+  English (US) source strings, the default for every language without its own file. To
+  translate, copy this file to values-<language>/strings.xml (for example values-es) and
+  translate the text; see TRANSLATING.md.
 -->
-<resources>
+<resources xmlns:tools="http://schemas.android.com/tools" tools:locale="en-US">
     <string name="app_name">YouTube Wear</string>
 
     <!-- Home screen -->

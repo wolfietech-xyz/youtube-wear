@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Italiano. Bozza: le correzioni sono benvenute, vedi TRANSLATING.md.
+-->
+<resources>
+    <string name="app_name">YouTube Wear</string>
+
+    <!-- Home screen -->
+    <string name="status_starting">avvio…</string>
+    <string name="home_shorts">Shorts</string>
+    <string name="home_videos">Video</string>
+    <string name="home_import_cookies">Importa cookie</string>
+    <string name="home_settings">Impostazioni</string>
+
+    <!-- Videos menu -->
+    <string name="menu_home">Home</string>
+    <string name="menu_popular">Popolari</string>
+    <string name="menu_search">Cerca</string>
+    <string name="menu_voice_search">Ricerca vocale</string>
+    <string name="menu_loading">Caricamento…</string>
+    <string name="menu_no_videos">Nessun video</string>
+    <string name="menu_search_prompt">Cerca su YouTube</string>
+    <string name="menu_error_load_videos">Impossibile caricare i video</string>
+    <string name="menu_no_voice_input">Nessun input vocale su questo orologio</string>
+
+    <!-- Cookie import -->
+    <string name="cookies_no_picker">Questo orologio non ha un selettore di file</string>
+    <string name="cookies_not_a_file">Non è un file cookies.txt</string>
+    <plurals name="cookies_imported">
+        <item quantity="one">Importato %d cookie</item>
+        <item quantity="many">Importati %d di cookie</item>
+        <item quantity="other">Importati %d cookie</item>
+    </plurals>
+    <string name="cookies_import_failed">Importazione cookie: %1$s</string>
+
+    <!-- Settings -->
+    <string name="settings_title">Impostazioni</string>
+    <string name="settings_like_timeout">Timeout Mi piace</string>
+    <string name="settings_video_timeout">Timeout video</string>
+    <string name="settings_seconds">%1$d s</string>
+
+    <!-- Loading screens -->
+    <string name="status_connecting">Connessione</string>
+    <string name="status_loading">Caricamento</string>
+    <string name="status_forced_buffering">Buffering forzato</string>
+
+    <!-- Paused controls and video info -->
+    <string name="player_volume">Vol %1$d</string>
+    <string name="info_views">%1$s visualizzazioni</string>
+    <string name="info_likes">%1$s Mi piace</string>
+
+    <!-- Errors and notices while watching -->
+    <string name="error_playback">Riproduzione: %1$s</string>
+    <string name="error_retry">%1$s. Tocca per riprovare</string>
+    <string name="error_timed_out">Tempo scaduto dopo %1$d s. Tocca per riprovare</string>
+    <string name="notice_still_loading">Ancora in caricamento</string>
+    <string name="notice_like_failed">Impossibile mettere Mi piace</string>
+    <string name="notice_unlike_failed">Impossibile togliere Mi piace</string>
+    <string name="like_timed_out">Tempo scaduto per Mi piace dopo %1$d s</string>
+    <string name="unlike_timed_out">Tempo scaduto per togliere Mi piace dopo %1$d s</string>
+
+    <!-- Hidden minigame -->
+    <string name="game_over">Pubblicità saltate: %1$d\nRecord: %2$d\n\nTocca per rigiocare</string>
+    <string name="game_intro">Flappy Play\n\nTocca per volare\nEvita le pubblicità</string>
+    <string name="game_video_ready">Video pronto · scorri indietro per guardarlo</string>
+</resources>

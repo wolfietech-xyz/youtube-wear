@@ -1,7 +1,11 @@
 # Translating YouTube Wear
 
-Everything the app says lives in one file, `app/src/main/res/values/strings.xml` (English).
-A translation is one more file next to it. You don't need to touch any code or build the app.
+Everything the app says lives in one file, `app/src/main/res/values/strings.xml` (English, US).
+That is the default for every language without its own file. A translation is one more file
+next to it. You don't need to touch any code or build the app; the app's language list is
+generated from the folders.
+
+Translations so far: Italian (`values-it`, a draft, corrections welcome).
 
 ## Add a language
 
