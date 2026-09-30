@@ -55,8 +55,14 @@ object YtDlp {
     fun homeFeed(context: Context): VideoList = videoList(call(context, "home_feed").toString())
 
     /** The Most Popular chart, for the debug region override if set, else the watch's region. */
-    fun popular(context: Context): VideoList =
-        videoList(call(context, "popular", region = regionOverride(context) ?: localeRegion()).toString())
+    fun popular(context: Context): VideoList = videoList(
+        call(
+            context,
+            "popular",
+            region = regionOverride(context) ?: localeRegion(),
+            language = Locale.getDefault().language.takeIf { it.isNotEmpty() },
+        ).toString(),
+    )
 
     /** Whether [e] is YouTube refusing the login, as opposed to any other failure. */
     fun isLoginRejected(e: Exception): Boolean = e.message?.contains("LOGIN_REJECTED") == true
@@ -105,6 +111,7 @@ object YtDlp {
         function: String,
         vararg args: Any?,
         region: String? = regionOverride(context),
+        language: String? = null,
     ): PyObject {
         // Built from app/src/main/cpp/quickjs-ng and extracted here at install time.
         val qjs = File(context.applicationInfo.nativeLibraryDir, "libqjs.so").path
@@ -116,6 +123,7 @@ object YtDlp {
             Kwarg("qjs_path", qjs),
             Kwarg("verbose", BuildConfig.DEBUG),
             Kwarg("region", region),
+            Kwarg("language", language),
             Kwarg("android_package", context.packageName),
             Kwarg("android_cert", signingCertSha1(context)),
         )

@@ -8,8 +8,9 @@ cookie_file Netscape cookies.txt from a signed-in YouTube session, the only sign
             supports for YouTube. yt-dlp writes refreshed cookies back to it.
 qjs_path    QuickJS-ng executable yt-dlp uses to solve YouTube's JavaScript challenges.
 verbose     Log yt-dlp's debug output.
-region      Two-letter country code to use instead of what YouTube would pick (debug builds only,
-            set in Settings), or null. YouTube may ignore or reject it.
+region      Two-letter country code for the Most Popular chart: the watch's, or the override set in
+            debug builds' Settings. Or null. YouTube may ignore or reject it.
+language    The watch's language code (for example "it"), sent as hl on the Most Popular chart, or null.
 """
 
 # The Data API key is checked against the app's package and signing certificate.
@@ -42,7 +43,7 @@ def version():
 
 
 def _ydl(api_key=None, cookie_file=None, qjs_path=None, verbose=False, android_package=None,
-         android_cert=None, region=None, **extra):
+         android_cert=None, region=None, language=None, **extra):
     if android_package and android_cert:
         _android_identity.update({"X-Android-Package": android_package, "X-Android-Cert": android_cert})
     opts = {
@@ -165,16 +166,34 @@ def home_feed(**settings):
 
 def popular(**settings):
     """YouTube's Most Popular chart through the Data API. The one place a region matters: it is
-    sent as regionCode when given (the watch's region, or the debug override).
-    Returns JSON: source, videos."""
+    sent as regionCode when given (the watch's region, or the debug override), and the watch's
+    language as hl. If YouTube has no chart for that region (an error, or an empty list) it asks
+    again without a region. Returns JSON: source, videos."""
     api_key = settings.get("api_key")
     if not api_key:
         raise RuntimeError("No YouTube API key in this build")
     region = settings.pop("region", None)
-    with _ydl(**settings) as ydl:
-        data = _data_api(ydl, "videos", part="snippet,contentDetails", chart="mostPopular",
-                         maxResults=30, key=api_key,
-                         **({"regionCode": region} if region else {}))
+    language = settings.pop("language", None)
+
+    def fetch(with_region):
+        params = {"part": "snippet,contentDetails", "chart": "mostPopular", "maxResults": 30, "key": api_key}
+        if with_region and region:
+            params["regionCode"] = region
+        if language:
+            params["hl"] = language
+        with _ydl(**settings) as ydl:
+            return _data_api(ydl, "videos", **params)
+
+    data = None
+    if region:
+        try:
+            data = fetch(True)
+        except Exception:
+            data = None  # no chart for this region, perhaps: ask again without one
+        if data is not None and not data.get("items"):
+            data = None
+    if data is None:
+        data = fetch(False)
     videos = [{
         "id": item["id"],
         "title": item["snippet"]["title"],
