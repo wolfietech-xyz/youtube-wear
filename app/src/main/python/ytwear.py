@@ -8,8 +8,8 @@ cookie_file Netscape cookies.txt from a signed-in YouTube session, the only sign
             supports for YouTube. yt-dlp writes refreshed cookies back to it.
 qjs_path    QuickJS-ng executable yt-dlp uses to solve YouTube's JavaScript challenges.
 verbose     Log yt-dlp's debug output.
-region      Two-letter country code for the Most Popular chart: the watch's, or the override set in
-            debug builds' Settings. Or null. YouTube may ignore or reject it.
+region      Two-letter country code for the Most Popular chart: the watch's, or the region set in
+            Settings. Or null. YouTube may ignore or reject it.
 language    The watch's language code (for example "it"), sent as hl on the Most Popular chart, or null.
 """
 
@@ -166,7 +166,7 @@ def home_feed(**settings):
 
 def popular(**settings):
     """YouTube's Most Popular chart through the Data API. The one place a region matters: it is
-    sent as regionCode when given (the watch's region, or the debug override), and the watch's
+    sent as regionCode when given (the watch's region, or the region set in Settings), and the watch's
     language as hl. If YouTube has no chart for that region (an error, or an empty list) it asks
     again without a region. Returns JSON: source, videos."""
     api_key = settings.get("api_key")

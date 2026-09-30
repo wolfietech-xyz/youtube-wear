@@ -50,7 +50,7 @@ class Settings(context: Context) {
     var videoTimeoutSeconds by savedInt("video_timeout_seconds", default = 50)
         private set
 
-    /** Debug builds only: a two-letter country code to use instead of YouTube's own pick; empty for automatic. */
+    /** A two-letter country code to use instead of YouTube's own pick; empty for automatic. */
     var regionOverride by mutableStateOf(prefs.getString(REGION_KEY, "") ?: "")
         private set
 
@@ -114,23 +114,24 @@ fun SettingsScreen(settings: Settings, onEditRegion: () -> Unit, homeShown: Bool
                     onUp = { settings.changeVideoTimeout(5) },
                 )
             }
-            if (BuildConfig.DEBUG) {
-                item {
-                    FilledTonalButton(
-                        onClick = onEditRegion,
-                        modifier = Modifier.fillMaxWidth().holdToClear {
-                            settings.updateRegion("")
-                            regionCleared = true
-                        },
-                    ) {
-                        Text(
-                            stringResource(
-                                R.string.settings_region,
-                                settings.regionOverride.ifEmpty { stringResource(R.string.settings_region_auto) },
-                            ),
-                        )
-                    }
+            item {
+                FilledTonalButton(
+                    onClick = onEditRegion,
+                    modifier = Modifier.fillMaxWidth().holdToClear {
+                        settings.updateRegion("")
+                        regionCleared = true
+                    },
+                ) {
+                    Text(
+                        stringResource(
+                            R.string.settings_region,
+                            settings.regionOverride.ifEmpty { stringResource(R.string.settings_region_auto) },
+                        ),
+                    )
                 }
+            }
+            // Debug builds only.
+            if (BuildConfig.DEBUG) {
                 item {
                     FilledTonalButton(onClick = onForceHome, modifier = Modifier.fillMaxWidth()) {
                         Text(stringResource(if (homeShown) R.string.settings_home_shown else R.string.settings_force_home))

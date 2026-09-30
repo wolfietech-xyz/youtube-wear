@@ -54,7 +54,7 @@ object YtDlp {
     /** The signed-in account's home feed. No region is sent; the account decides. */
     fun homeFeed(context: Context): VideoList = videoList(call(context, "home_feed").toString())
 
-    /** The Most Popular chart, for the debug region override if set, else the watch's region. */
+    /** The Most Popular chart, for the region set in Settings if any, else the watch's region. */
     fun popular(context: Context): VideoList = videoList(
         call(
             context,
@@ -129,10 +129,9 @@ object YtDlp {
         )
     }
 
-    /** The region set in debug builds' Settings, or null; release builds never use one. */
+    /** The region the user set in Settings, or null for automatic. */
     private fun regionOverride(context: Context): String? =
-        if (!BuildConfig.DEBUG) null
-        else context.getSharedPreferences("settings", Context.MODE_PRIVATE)
+        context.getSharedPreferences("settings", Context.MODE_PRIVATE)
             .getString(Settings.REGION_KEY, null)?.takeIf { it.isNotEmpty() }
 
     /** The watch's country from its language setting, or null when there is none. */
