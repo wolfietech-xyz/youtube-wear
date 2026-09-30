@@ -20,8 +20,11 @@ which YouTube's terms don't allow and which can break whenever YouTube changes t
 
 - **Shorts:** your Shorts feed (personalised when signed in), falling back to subscriptions'
   Shorts, then a search. Swipe between Shorts; they loop.
-- **Videos:** your home feed (YouTube's Most Popular when signed out), Search with the
-  watch's keyboard, and Voice search with its speech recognition.
+- **Home:** your own YouTube home feed. It is shown only while your sign-in is accepted; if
+  YouTube refuses it, Home goes away and Popular is shown instead.
+- **Popular:** YouTube's Most Popular chart for your watch's region.
+- **Search:** a search box at the top of both feeds, with the microphone inside it for voice
+  search. Text entry uses the watch's keyboard, voice or handwriting.
 - **Controls:** tap to pause; paused, previous / play / next and volume. The bezel or crown
   also sets the volume. In a regular video, swipe up for its details.
 - **Likes:** double-tap a Short to like or unlike it.

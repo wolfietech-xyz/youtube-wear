@@ -13,7 +13,8 @@
 #   watch.sh logs [n]           last n (default 25) app + yt-dlp log lines, API key redacted
 #   watch.sh ui                 texts currently on screen
 #   watch.sh shorts             build, install, launch, open Shorts, wait for the first frame
-#   watch.sh videos             same for Videos
+#   watch.sh home               build, install, launch, open the Home feed, wait for its list
+#   watch.sh popular            same for Popular (Home is only shown while the login isn't refused)
 set -u
 export MSYS_NO_PATHCONV=1
 REPO="$(cd "$(dirname "$0")/../../.." && pwd)"
@@ -103,6 +104,17 @@ open_mode() {
   cmd_shot "$(echo "$1" | tr 'A-Z' 'a-z')"
 }
 
+# Opens a feed from the start screen and waits for its list. A feed plays nothing, so there is no
+# first frame to wait for. Popular can sit below the fold, so scroll once if it isn't found.
+open_menu() {
+  cmd_build | tee /dev/stderr | grep -q 'BUILD SUCCESSFUL' || return 1
+  cmd_install && cmd_launch && sleep 3
+  cmd_tap "$1" || { cmd_swipe up; sleep 1; cmd_tap "$1"; }
+  sleep 10
+  cmd_ui | head -8
+  cmd_shot "$(echo "$1" | tr 'A-Z' 'a-z')"
+}
+
 case "${1:-}" in
   build) cmd_build ;;
   install) cmd_install ;;
@@ -115,6 +127,7 @@ case "${1:-}" in
   logs) cmd_logs "${2:-25}" ;;
   ui) cmd_ui ;;
   shorts) open_mode Shorts ;;
-  videos) open_mode Videos ;;
-  *) sed -n '2,20p' "$0" ;;
+  home) open_menu Home ;;
+  popular) open_menu Popular ;;
+  *) sed -n '2,21p' "$0" ;;
 esac

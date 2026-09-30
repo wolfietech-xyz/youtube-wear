@@ -1,6 +1,6 @@
 ---
 name: watch-test
-description: Build, install and test the youtube-wear app on the paired Samsung Galaxy Watch Ultra2 over wireless adb - open Shorts or Videos, tap, swipe, screenshot and read filtered logs with one short command each. Use whenever a change needs checking on the watch.
+description: Build, install and test the youtube-wear app on the paired Samsung Galaxy Watch Ultra2 over wireless adb - open Shorts, Home or Popular, tap, swipe, screenshot and read filtered logs with one short command each. Use whenever a change needs checking on the watch.
 ---
 
 # Testing youtube-wear on the watch
@@ -10,7 +10,8 @@ directory). It keeps output short, waits for the watch to reconnect, and redacts
 
 | Command | Does |
 |---|---|
-| `watch.sh shorts` / `watch.sh videos` | Build, install, launch, open that mode, wait for the first video frame, print the last log lines, save a screenshot |
+| `watch.sh shorts` | Build, install, launch, open Shorts, wait for the first video frame, print the last log lines, save a screenshot |
+| `watch.sh home` / `watch.sh popular` | Build, install, launch, open that feed, wait 10 s for its list, print the texts on screen, save a screenshot. Home is on the start screen only while the login hasn't been refused; debug Settings has a Show Home button that forces it |
 | `watch.sh build` | Gradle `assembleDebug`, prints only compile errors and the result |
 | `watch.sh install`, `watch.sh launch` | Install the debug APK; force-stop, clear logcat and start the app |
 | `watch.sh tap "Shorts"` / `watch.sh tapxy 249 249` | Tap an element by its text, or a point (screen is 498x498) |
