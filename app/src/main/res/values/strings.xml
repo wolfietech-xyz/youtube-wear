@@ -39,6 +39,10 @@
     <string name="settings_like_timeout">Like timeout</string>
     <string name="settings_video_timeout">Video timeout</string>
     <!-- A number of seconds, for example "8 s" -->
+    <!-- Debug builds only. %1$s is a two-letter country code or "Auto". -->
+    <string name="settings_region">Region: %1$s</string>
+    <string name="settings_region_auto">Auto</string>
+    <string name="region_prompt">Region code, e.g. IT (empty for Auto)</string>
     <string name="settings_seconds">%1$d s</string>
 
     <!-- Loading screens. Shown in capitals; write them in normal case. -->

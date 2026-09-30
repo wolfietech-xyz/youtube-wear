@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -22,6 +23,10 @@ import androidx.wear.compose.material3.Text
 
 /** User settings, saved on the watch. */
 class Settings(context: Context) {
+    companion object {
+        const val REGION_KEY = "region_override"
+    }
+
     private val prefs = context.getSharedPreferences("settings", Context.MODE_PRIVATE)
 
     /** How long a like or unlike may take before the watch gives up. */
@@ -31,6 +36,18 @@ class Settings(context: Context) {
     /** How long finding and buffering a video may take before the watch gives up. */
     var videoTimeoutSeconds by savedInt("video_timeout_seconds", default = 50)
         private set
+
+    /** Debug builds only: a two-letter country code to use instead of YouTube's own pick; empty for automatic. */
+    var regionOverride by mutableStateOf(prefs.getString(REGION_KEY, "") ?: "")
+        private set
+
+    /** Sets the region from what the user typed; blank clears it. Anything else that isn't two letters is ignored. */
+    fun updateRegion(input: String) {
+        val code = input.trim().uppercase()
+        if (code.isNotEmpty() && !Regex("[A-Z]{2}").matches(code)) return
+        regionOverride = code
+        prefs.edit().putString(REGION_KEY, code).apply()
+    }
 
     fun changeLikeTimeout(by: Int) {
         likeTimeoutSeconds = (likeTimeoutSeconds + by).coerceIn(1, 120)
@@ -53,7 +70,7 @@ class Settings(context: Context) {
 }
 
 @Composable
-fun SettingsScreen(settings: Settings) {
+fun SettingsScreen(settings: Settings, onEditRegion: () -> Unit) {
     ScalingLazyColumn(Modifier.fillMaxWidth()) {
         item { Text(stringResource(R.string.settings_title), style = MaterialTheme.typography.titleMedium) }
         item {
@@ -71,6 +88,18 @@ fun SettingsScreen(settings: Settings) {
                 onDown = { settings.changeVideoTimeout(-5) },
                 onUp = { settings.changeVideoTimeout(5) },
             )
+        }
+        if (BuildConfig.DEBUG) {
+            item {
+                FilledTonalButton(onClick = onEditRegion, modifier = Modifier.fillMaxWidth()) {
+                    Text(
+                        stringResource(
+                            R.string.settings_region,
+                            settings.regionOverride.ifEmpty { stringResource(R.string.settings_region_auto) },
+                        ),
+                    )
+                }
+            }
         }
     }
 }

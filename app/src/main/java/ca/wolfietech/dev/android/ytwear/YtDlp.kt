@@ -101,10 +101,17 @@ object YtDlp {
             Kwarg("cookie_file", cookieFile(context).takeIf { it.exists() }?.path),
             Kwarg("qjs_path", qjs),
             Kwarg("verbose", BuildConfig.DEBUG),
+            Kwarg("region", regionOverride(context)),
             Kwarg("android_package", context.packageName),
             Kwarg("android_cert", signingCertSha1(context)),
         )
     }
+
+    /** The region set in debug builds' Settings, or null; release builds never use one. */
+    private fun regionOverride(context: Context): String? =
+        if (!BuildConfig.DEBUG) null
+        else context.getSharedPreferences("settings", Context.MODE_PRIVATE)
+            .getString(Settings.REGION_KEY, null)?.takeIf { it.isNotEmpty() }
 
     private var certSha1: String? = null
 

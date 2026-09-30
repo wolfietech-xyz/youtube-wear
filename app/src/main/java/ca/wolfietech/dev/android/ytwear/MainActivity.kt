@@ -40,6 +40,7 @@ import kotlinx.coroutines.withContext
 const val TAG = "YouTubeWear"
 
 private const val SEARCH_QUERY = "query"
+private const val REGION_INPUT = "region"
 
 // Hidden until the watch can pick a file: Wear OS has no document picker (see HANDOFF.md).
 private const val SHOW_IMPORT_COOKIES = false
@@ -65,6 +66,12 @@ class MainActivity : ComponentActivity() {
     private val askVoice = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
         val query = result.data?.getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS)?.firstOrNull()?.trim()
         if (!query.isNullOrEmpty()) search(query)
+    }
+
+    // Debug builds only: type a country code to use instead of YouTube's own pick.
+    private val askRegion = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+        result.data?.let { RemoteInput.getResultsFromIntent(it) }
+            ?.getCharSequence(REGION_INPUT)?.toString()?.let(settings::updateRegion)
     }
 
     private val pickCookies =
@@ -114,7 +121,7 @@ class MainActivity : ComponentActivity() {
                             )
                         } else if (showSettings) {
                             BackHandler { showSettings = false }
-                            SettingsScreen(settings)
+                            SettingsScreen(settings, onEditRegion = ::openRegionInput)
                         } else HomeScreen(
                             status,
                             onShorts = { startWatching(WatchMode.Shorts) },
@@ -166,6 +173,15 @@ class MainActivity : ComponentActivity() {
             listOf(RemoteInput.Builder(SEARCH_QUERY).setLabel(getString(R.string.menu_search_prompt)).build()),
         )
         askSearch.launch(intent)
+    }
+
+    private fun openRegionInput() {
+        val intent = RemoteInputIntentHelper.createActionRemoteInputIntent()
+        RemoteInputIntentHelper.putRemoteInputsExtra(
+            intent,
+            listOf(RemoteInput.Builder(REGION_INPUT).setLabel(getString(R.string.region_prompt)).build()),
+        )
+        askRegion.launch(intent)
     }
 
     private fun openVoiceSearch() {

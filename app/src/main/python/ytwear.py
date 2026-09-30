@@ -8,6 +8,8 @@ cookie_file Netscape cookies.txt from a signed-in YouTube session, the only sign
             supports for YouTube. yt-dlp writes refreshed cookies back to it.
 qjs_path    QuickJS-ng executable yt-dlp uses to solve YouTube's JavaScript challenges.
 verbose     Log yt-dlp's debug output.
+region      Two-letter country code to use instead of what YouTube would pick (debug builds only,
+            set in Settings), or null. YouTube may ignore or reject it.
 """
 
 # The Data API key is checked against the app's package and signing certificate.
@@ -37,7 +39,7 @@ def version():
 
 
 def _ydl(api_key=None, cookie_file=None, qjs_path=None, verbose=False, android_package=None,
-         android_cert=None, **extra):
+         android_cert=None, region=None, **extra):
     if android_package and android_cert:
         _android_identity.update({"X-Android-Package": android_package, "X-Android-Cert": android_cert})
     opts = {
@@ -48,6 +50,8 @@ def _ydl(api_key=None, cookie_file=None, qjs_path=None, verbose=False, android_p
         "noplaylist": True,
         **extra,
     }
+    if region:
+        opts["geo_bypass_country"] = region
     if qjs_path:
         opts["js_runtimes"] = {"quickjs": {"path": qjs_path}}
     if cookie_file:
@@ -144,7 +148,8 @@ def home_feed(**settings):
         raise RuntimeError("Sign in (cookies.txt) to see your home feed")
     with _ydl(**settings) as ydl:
         data = _data_api(ydl, "videos", part="snippet,contentDetails", chart="mostPopular",
-                         maxResults=30, key=api_key)
+                         maxResults=30, key=api_key,
+                         **({"regionCode": settings["region"]} if settings.get("region") else {}))
     videos = [{
         "id": item["id"],
         "title": item["snippet"]["title"],
@@ -328,6 +333,7 @@ def _search_shorts(page_token, settings):
     with _ydl(**settings) as ydl:
         data = _data_api(ydl, "search", part="id", type="video", videoDuration="short",
                          q="#shorts", maxResults=25, key=api_key,
+                         **({"regionCode": settings["region"]} if settings.get("region") else {}),
                          **({"pageToken": page_token} if page_token else {}))
     ids = [item["id"]["videoId"] for item in data.get("items", [])]
     return ids, data.get("nextPageToken")

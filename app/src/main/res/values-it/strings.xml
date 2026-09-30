@@ -37,6 +37,9 @@
     <string name="settings_title">Impostazioni</string>
     <string name="settings_like_timeout">Timeout Mi piace</string>
     <string name="settings_video_timeout">Timeout video</string>
+    <string name="settings_region">Regione: %1$s</string>
+    <string name="settings_region_auto">Auto</string>
+    <string name="region_prompt">Codice regione, es. IT (vuoto per Auto)</string>
     <string name="settings_seconds">%1$d s</string>
 
     <!-- Loading screens -->
