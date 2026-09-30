@@ -33,6 +33,9 @@ Useful app log lines (tag `YouTubeWear`): `Resolving <id>`, `Got N Shorts from f
   `watch.sh` says "watch not connected", ask the user to wake the watch.
 - In Git Bash set `MSYS_NO_PATHCONV=1` for raw adb calls, or device paths like `/sdcard`
   get rewritten to Windows paths (the script does this).
+- `adb.exe` is a Windows program: it does not understand Git Bash paths such as `/c/Users/...`
+  or `/c/tmp/...` for anything (install, push, pull). Give it Windows paths with forward
+  slashes, like `C:/Users/...`, for every local file.
 - Signed-in YouTube cookies live in the app's private `files/cookies.txt`; the user installs
   them with `adb push` + `adb shell run-as ca.wolfietech.dev.android.ytwear cp ...`. Never read, copy or
   print their contents.
