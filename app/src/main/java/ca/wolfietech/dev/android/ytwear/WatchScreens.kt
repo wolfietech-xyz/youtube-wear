@@ -40,6 +40,7 @@ import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -557,6 +558,11 @@ class Volume(private val audio: AudioManager) {
             if (direction > 0) AudioManager.ADJUST_RAISE else AudioManager.ADJUST_LOWER,
             0,
         )
+        refresh()
+    }
+
+    /** Re-read the system value; the stream can change from outside (bezel, system panel). */
+    fun refresh() {
         level = audio.getStreamVolume(AudioManager.STREAM_MUSIC)
     }
 }
@@ -564,7 +570,20 @@ class Volume(private val audio: AudioManager) {
 @Composable
 private fun rememberVolume(): Volume {
     val context = LocalContext.current
-    return remember { Volume(context.getSystemService(Context.AUDIO_SERVICE) as AudioManager) }
+    val volume = remember { Volume(context.getSystemService(Context.AUDIO_SERVICE) as AudioManager) }
+    DisposableEffect(volume) {
+        val receiver = object : android.content.BroadcastReceiver() {
+            override fun onReceive(c: Context?, intent: android.content.Intent?) = volume.refresh()
+        }
+        // Not a public constant, but the long-standing broadcast for stream volume changes.
+        context.registerReceiver(
+            receiver,
+            android.content.IntentFilter("android.media.VOLUME_CHANGED_ACTION"),
+        )
+        volume.refresh()
+        onDispose { context.unregisterReceiver(receiver) }
+    }
+    return volume
 }
 
 private enum class Glyphs { Previous, Play, Next, Plus, Minus }
