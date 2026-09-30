@@ -1,6 +1,6 @@
 ---
 name: watch-test
-description: Build, install and test the youtube-wear app on the paired Samsung Galaxy Watch Ultra over wireless adb - open Reels or Videos, tap, swipe, screenshot and read filtered logs with one short command each. Use whenever a change needs checking on the watch.
+description: Build, install and test the youtube-wear app on the paired Samsung Galaxy Watch Ultra2 over wireless adb - open Reels or Videos, tap, swipe, screenshot and read filtered logs with one short command each. Use whenever a change needs checking on the watch.
 ---
 
 # Testing youtube-wear on the watch
@@ -26,7 +26,7 @@ Useful app log lines (tag `YouTubeWear`): `Resolving <id>`, `Got N reels from fe
 
 ## Facts that save rediscovery
 
-- Watch: Galaxy Watch Ultra SM-L715F, Android 17 (API 37), 32-bit `armeabi-v7a` only,
+- Watch: Galaxy Watch Ultra2 SM-L715F, Android 17 (API 37), 32-bit `armeabi-v7a` only,
   Qualcomm H.264/HEVC/VP9 hardware decoders, 498x498 round screen.
 - adb is at `%LOCALAPPDATA%\Android\Sdk\platform-tools\adb.exe`, not on PATH. The watch
   is already paired; it drops off whenever it sleeps and returns by mDNS when woken. If
