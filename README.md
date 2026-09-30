@@ -4,7 +4,7 @@ YouTube on Wear OS watches. Shorts and regular videos play on the watch itself, 
 [yt-dlp](https://github.com/yt-dlp/yt-dlp) running on an embedded CPython
 ([Chaquopy](https://chaquo.com/chaquopy/)), with [QuickJS-ng](https://github.com/quickjs-ng/quickjs)
 solving YouTube's JavaScript challenges and Media3 ExoPlayer playing the streams.
-Built and tested on a Samsung Galaxy Watch Ultra.
+Built and tested on a Samsung Galaxy Watch Ultra2.
 
 Not affiliated with YouTube or Google. It uses YouTube's web endpoints the way yt-dlp does,
 which YouTube's terms don't allow and which can break whenever YouTube changes them.
